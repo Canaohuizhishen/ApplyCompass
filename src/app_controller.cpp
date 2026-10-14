@@ -1,5 +1,8 @@
 #include "app_controller.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include <QCoreApplication>
 #include <QDesktopServices>
 #include <QQmlEngine>
@@ -8,6 +11,7 @@
 #include "core/app_paths.h"
 #include "core/application_model.h"
 #include "core/database.h"
+#include "core/exporter.h"
 #include "core/records.h"
 
 namespace {
@@ -41,6 +45,9 @@ void AppController::initialize()
         return;
     }
     m_model = new applycompass::ApplicationModel(m_db.get(), this);
+
+    // 恢复缩放设置（Ctrl+滚轮）
+    m_uiZoom = clampedZoom(m_db->setting(QStringLiteral("uiZoom"), QStringLiteral("1.0")).toDouble());
 
     // 每日首启备份 + 退出备份（§3.8）；空库不备份，避免堆积垃圾文件
     if (!m_db->hasBackupToday() && m_db->recordCount() > 0) {
@@ -90,6 +97,79 @@ QStringList AppController::kindOptions() const
 QString AppController::errorMessage() const
 {
     return m_error;
+}
+
+qreal AppController::clampedZoom(qreal value)
+{
+    // 对齐 10% 档位后 clamp 到 [70%, 160%]
+    const qreal stepped = std::round(value * 10.0) / 10.0;
+    return std::clamp(stepped, 0.7, 1.6);
+}
+
+qreal AppController::uiZoom() const
+{
+    return m_uiZoom;
+}
+
+void AppController::setUiZoom(qreal value)
+{
+    const qreal v = clampedZoom(value);
+    if (qFuzzyCompare(v, m_uiZoom))
+        return;
+    m_uiZoom = v;
+    emit uiZoomChanged();
+    if (m_db && m_db->isOpen())
+        m_db->setSetting(QStringLiteral("uiZoom"), QString::number(v, 'f', 2));
+}
+
+void AppController::zoomBySteps(int steps)
+{
+    setUiZoom(m_uiZoom + steps * 0.1);
+}
+
+QString AppController::lastExportMessage() const
+{
+    return m_lastExportMessage;
+}
+
+QVariantMap AppController::exportAll()
+{
+    QVariantMap res;
+    if (!m_db) {
+        m_lastExportMessage = tr("导出失败：数据库未打开");
+        emit lastExportMessageChanged();
+        res.insert(QStringLiteral("ok"), false);
+        return res;
+    }
+    const applycompass::ExportResult r =
+        applycompass::Exporter::exportAll(*m_db, applycompass::resolveExportDir());
+    res.insert(QStringLiteral("ok"), r.ok());
+    res.insert(QStringLiteral("xlsx"), r.xlsxPath);
+    res.insert(QStringLiteral("csv"), r.csvPath);
+    res.insert(QStringLiteral("error"), r.error);
+    res.insert(QStringLiteral("warning"), r.warning);
+    if (r.ok()) {
+        m_lastExportMessage = r.warning.isEmpty()
+                                  ? tr("已导出 → %1").arg(r.xlsxPath)
+                                  : tr("已导出（%1）→ %2").arg(r.warning, r.xlsxPath);
+    } else {
+        m_lastExportMessage = tr("导出失败：%1").arg(r.error);
+    }
+    emit lastExportMessageChanged();
+    return res;
+}
+
+void AppController::clearExportMessage()
+{
+    if (m_lastExportMessage.isEmpty())
+        return;
+    m_lastExportMessage.clear();
+    emit lastExportMessageChanged();
+}
+
+bool AppController::openExportFolder() const
+{
+    return QDesktopServices::openUrl(QUrl::fromLocalFile(applycompass::resolveExportDir()));
 }
 
 QVariantMap AppController::recordDetails(qint64 id) const

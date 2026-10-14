@@ -3,7 +3,7 @@ import QtQuick.Controls
 
 import ApplyCompass
 
-// 状态彩色块（设计文档 §3.4）。单击 → 下拉 9 项快改（§3.1，popup() 默认在鼠标位置弹出）。
+// 状态胶囊（设计文档 §3.4）。单击 → 下拉 9 项快改（§3.1，popup() 默认在鼠标位置弹出）。
 Item {
     id: root
     objectName: "statusBlock"
@@ -13,26 +13,27 @@ Item {
 
     signal statusChosen(string status)
 
-    implicitWidth: 74
-    implicitHeight: 24
+    implicitWidth: Theme.s(74)
+    implicitHeight: Theme.s(24)
 
     Rectangle {
+        id: pill
         anchors.centerIn: parent
-        width: Math.min(parent.width, 74)
-        height: 22
-        radius: 4
+        width: Math.min(parent.width, Theme.s(76))
+        height: Theme.s(20)
+        radius: height / 2
         color: root.status !== "" ? Theme.statusColor(root.status) : "transparent"
         border.width: 1
         border.color: root.status !== ""
-                      ? Qt.darker(Theme.statusColor(root.status), 1.25)
-                      : "#cccccc"
+                      ? Qt.darker(Theme.statusColor(root.status), 1.2)
+                      : Theme.border
 
         Text {
             anchors.centerIn: parent
-            width: parent.width - 8
+            width: parent.width - Theme.gapS
             text: root.status !== "" ? root.status : "—"
-            color: root.status !== "" ? "#1a1a1a" : "#9a9a9a"
-            font.pixelSize: 12
+            color: root.status !== "" ? "#1a1a1a" : Theme.textTertiary
+            font.pixelSize: Theme.fontBadge
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
         }

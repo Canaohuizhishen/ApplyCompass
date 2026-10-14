@@ -1,4 +1,5 @@
 #include <QCommandLineParser>
+#include <QFont>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
@@ -20,6 +21,13 @@ int main(int argc, char *argv[])
     //（TextArea 的 MobileTextActionsToolBar 目标类型不匹配），Fusion 在各环境行为一致。
     // 深浅色打磨（M3）时再评估是否切回系统样式。
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
+
+    // 显式设定字体：本机 fontconfig 默认 sans-serif 会落到 Droid Sans Fallback，
+    // 显式使用 Noto Sans CJK SC 获得现代的中英混排观感（含完整 CJK + 拉丁字形）。
+    QFont uiFont;
+    uiFont.setFamilies({QStringLiteral("Noto Sans CJK SC"), QStringLiteral("Noto Sans"),
+                        QStringLiteral("Noto Sans CJK TC"), QStringLiteral("DejaVu Sans")});
+    app.setFont(uiFont);
 
     QCommandLineParser parser;
     parser.setApplicationDescription(QStringLiteral("投递罗盘 · ApplyCompass"));

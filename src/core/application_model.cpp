@@ -119,16 +119,24 @@ QHash<int, QByteArray> ApplicationModel::roleNames() const
 void ApplicationModel::reload()
 {
     beginResetModel();
-    m_records = m_db ? m_db->loadAll() : QVector<ApplicationRecord>();
+    m_allRecords = m_db ? m_db->loadAll() : QVector<ApplicationRecord>();
+    m_records.clear();
+    const QDate today = QDate::currentDate();
+    for (const ApplicationRecord &r : m_allRecords) {
+        if (matchesFilters(r, today))
+            m_records.append(r);
+    }
     endResetModel();
     recomputeStats();
+    rebuildRegionOptions();
 }
 
 void ApplicationModel::recomputeStats()
 {
     m_totalApplied = m_inProgress = m_rejected = m_offers = m_followUpDue = 0;
     const QDate today = QDate::currentDate();
-    for (const ApplicationRecord &r : m_records) {
+    // 统计条＝全库口径（§11 增补）
+    for (const ApplicationRecord &r : m_allRecords) {
         if (!r.isApplied())
             continue;
         ++m_totalApplied;
@@ -141,6 +149,14 @@ void ApplicationModel::recomputeStats()
         if (isFollowUpDue(r, today))
             ++m_followUpDue;
     }
+    // 分区头计数＝筛选后计数
+    m_visibleApplied = m_visiblePending = 0;
+    for (const ApplicationRecord &r : m_records) {
+        if (r.isApplied())
+            ++m_visibleApplied;
+        else
+            ++m_visiblePending;
+    }
     emit statsChanged();
 }
 
@@ -150,9 +166,126 @@ bool ApplicationModel::isFollowUpDue(const ApplicationRecord &r, const QDate &to
            && r.statusUpdated.daysTo(today) > 14;
 }
 
+// ---------------- 筛选（§3.5） ----------------
+
+void ApplicationModel::setSearchText(const QString &text)
+{
+    const QString t = text.trimmed();
+    if (t == m_searchText)
+        return;
+    m_searchText = t;
+    reload();
+    emit filtersChanged();
+}
+
+void ApplicationModel::setStatusFilter(const QStringList &statuses)
+{
+    QStringList filtered;
+    for (const QString &s : statuses) {
+        if (enums::Statuses.contains(s) && !filtered.contains(s))
+            filtered.append(s);
+    }
+    if (filtered == m_statusFilter)
+        return;
+    m_statusFilter = filtered;
+    reload();
+    emit filtersChanged();
+}
+
+void ApplicationModel::setKindFilter(const QString &kind)
+{
+    const QString k = enums::Kinds.contains(kind) ? kind : QString();
+    if (k == m_kindFilter)
+        return;
+    m_kindFilter = k;
+    reload();
+    emit filtersChanged();
+}
+
+void ApplicationModel::setRegionFilter(const QString &region)
+{
+    const QString r = region.trimmed();
+    if (r == m_regionFilter)
+        return;
+    m_regionFilter = r;
+    reload();
+    emit filtersChanged();
+}
+
+void ApplicationModel::setFollowUpOnly(bool on)
+{
+    if (on == m_followUpOnly)
+        return;
+    m_followUpOnly = on;
+    reload();
+    emit filtersChanged();
+}
+
+void ApplicationModel::toggleFollowUpFilter()
+{
+    setFollowUpOnly(!m_followUpOnly);
+}
+
+void ApplicationModel::clearFilters()
+{
+    if (!filtersActive())
+        return;
+    m_searchText.clear();
+    m_statusFilter.clear();
+    m_kindFilter.clear();
+    m_regionFilter.clear();
+    m_followUpOnly = false;
+    reload();
+    emit filtersChanged();
+}
+
+bool ApplicationModel::filtersActive() const
+{
+    return !m_searchText.isEmpty() || !m_statusFilter.isEmpty()
+           || !m_kindFilter.isEmpty() || !m_regionFilter.isEmpty() || m_followUpOnly;
+}
+
+bool ApplicationModel::matchesFilters(const ApplicationRecord &r, const QDate &today) const
+{
+    if (m_followUpOnly && !isFollowUpDue(r, today))
+        return false;
+    if (!m_kindFilter.isEmpty() && r.kind != m_kindFilter)
+        return false;
+    if (!m_regionFilter.isEmpty() && r.region != m_regionFilter)
+        return false;
+    if (!m_statusFilter.isEmpty() && !m_statusFilter.contains(r.status))
+        return false;
+    if (!m_searchText.isEmpty()) {
+        const Qt::CaseSensitivity cs = Qt::CaseInsensitive;
+        if (!(r.company.contains(m_searchText, cs) || r.position.contains(m_searchText, cs)
+              || r.region.contains(m_searchText, cs) || r.notes.contains(m_searchText, cs)))
+            return false;
+    }
+    return true;
+}
+
+void ApplicationModel::rebuildRegionOptions()
+{
+    QStringList regions;
+    for (const ApplicationRecord &r : m_allRecords) {
+        if (!r.region.isEmpty() && !regions.contains(r.region))
+            regions.append(r.region);
+    }
+    regions.sort(Qt::CaseInsensitive);
+    if (regions == m_regionOptions)
+        return;
+    m_regionOptions = regions;
+    emit regionOptionsChanged();
+}
+
 const ApplicationRecord *ApplicationModel::recordById(qint64 id) const
 {
     for (const ApplicationRecord &r : m_records) {
+        if (r.id == id)
+            return &r;
+    }
+    // 回退全库：详情抽屉在“记录被筛掉”时仍可读写
+    for (const ApplicationRecord &r : m_allRecords) {
         if (r.id == id)
             return &r;
     }

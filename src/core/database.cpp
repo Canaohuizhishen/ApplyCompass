@@ -344,6 +344,32 @@ QVector<StatusEvent> Database::statusEvents(qint64 applicationId) const
     return result;
 }
 
+QString Database::setting(const QString &key, const QString &defaultValue) const
+{
+    QSqlQuery q(m_db);
+    q.prepare(QStringLiteral("SELECT value FROM settings WHERE key = ?"));
+    q.addBindValue(key);
+    if (q.exec() && q.next()) {
+        const QString value = q.value(0).toString();
+        if (!value.isEmpty())
+            return value;
+    }
+    return defaultValue;
+}
+
+bool Database::setSetting(const QString &key, const QString &value)
+{
+    QSqlQuery q(m_db);
+    q.prepare(QStringLiteral("INSERT OR REPLACE INTO settings(key, value) VALUES(?, ?)"));
+    q.addBindValue(key);
+    q.addBindValue(value);
+    if (!q.exec()) {
+        setError(QStringLiteral("写入设置失败"), q.lastError().text());
+        return false;
+    }
+    return true;
+}
+
 QString Database::backupNow()
 {
     if (!m_db.isOpen())

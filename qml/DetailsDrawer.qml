@@ -11,10 +11,17 @@ Drawer {
     objectName: "detailsDrawer"
 
     edge: Qt.RightEdge
-    width: Math.min(640, parent ? parent.width * 0.58 : 640)
+    width: Math.min(Theme.s(640), parent ? parent.width * 0.58 : Theme.s(640))
     height: parent ? parent.height : 720
     interactive: true
     closePolicy: Popup.CloseOnEscape
+    padding: 0
+
+    background: Rectangle {
+        color: Theme.surface
+        border.width: 1
+        border.color: Theme.border
+    }
 
     property int recordId: -1
 
@@ -41,21 +48,22 @@ Drawer {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 10
+        anchors.margins: Theme.gapL
+        spacing: Theme.gapM
 
         RowLayout {
             Layout.fillWidth: true
             Label {
                 text: qsTr("投递详情")
                 font.bold: true
-                font.pixelSize: 15
+                font.pixelSize: Theme.fontTitle
+                color: Theme.textPrimary
             }
             Item { Layout.fillWidth: true }
-            Button {
+            AppButton {
                 objectName: "closeDrawerButton"
+                variant: "ghost"
                 text: "\u2715"
-                flat: true
                 onClicked: drawer.close()
             }
         }
@@ -70,15 +78,20 @@ Drawer {
         RowLayout {
             Layout.fillWidth: true
             visible: form.linkText !== ""
-            Label { text: qsTr("跟进链接") }
+            Label {
+                text: qsTr("跟进链接")
+                font.pixelSize: Theme.fontSmall
+                color: Theme.textSecondary
+            }
             Label {
                 Layout.fillWidth: true
                 text: form.linkText
                 elide: Text.ElideMiddle
                 color: Theme.linkColor
             }
-            Button {
+            AppButton {
                 objectName: "openLinkButton"
+                variant: "ghost"
                 text: qsTr("打开")
                 onClicked: App.openLink(form.linkText)
             }
@@ -87,32 +100,40 @@ Drawer {
         Label {
             text: qsTr("状态时间线")
             font.bold: true
+            font.pixelSize: Theme.fontBody
+            color: Theme.textPrimary
         }
 
-        Frame {
+        Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 112
+            Layout.preferredHeight: Theme.s(112)
+            color: Theme.sectionBg
+            radius: Theme.radius
+            border.width: 1
+            border.color: Theme.border
 
             ListView {
                 id: timelineList
                 objectName: "timelineList"
                 anchors.fill: parent
+                anchors.margins: Theme.gapS
                 clip: true
                 model: timelineModel
 
                 delegate: Row {
                     width: timelineList.width
-                    height: 20
-                    spacing: 10
+                    height: Theme.s(20)
+                    spacing: Theme.gapM
                     Text {
-                        width: 130
+                        width: Theme.s(130)
                         text: model.at
-                        color: "#666666"
-                        font.pixelSize: 12
+                        color: Theme.textTertiary
+                        font.pixelSize: Theme.fontSmall
                     }
                     Text {
                         text: model.from + " → " + model.to
-                        font.pixelSize: 12
+                        font.pixelSize: Theme.fontSmall
+                        color: Theme.textSecondary
                     }
                 }
             }
@@ -121,8 +142,8 @@ Drawer {
                 anchors.centerIn: parent
                 visible: timelineModel.count === 0
                 text: qsTr("（暂无记录）")
-                color: "#999999"
-                font.pixelSize: 12
+                color: Theme.textTertiary
+                font.pixelSize: Theme.fontSmall
             }
         }
 
@@ -130,14 +151,16 @@ Drawer {
 
         RowLayout {
             Layout.fillWidth: true
-            Button {
+            AppButton {
                 objectName: "deleteButton"
+                variant: "danger"
                 text: qsTr("删除该行")
                 onClicked: confirmDialog.open()
             }
             Item { Layout.fillWidth: true }
-            Button {
+            AppButton {
                 objectName: "saveButton"
+                variant: "primary"
                 text: qsTr("保存")
                 enabled: form.valid
                 onClicked: {
@@ -155,17 +178,27 @@ Drawer {
         id: confirmDialog
         objectName: "confirmDeleteDialog"
         anchors.centerIn: parent
-        width: 420
+        width: Theme.s(420)
         modal: true
         title: qsTr("删除确认")
+        padding: Theme.gapL
+
+        background: Rectangle {
+            color: Theme.surface
+            radius: Theme.radiusCard
+            border.width: 1
+            border.color: Theme.border
+        }
 
         Label {
             text: qsTr("确定删除「%1」？此操作不可撤销。").arg(form.companyText)
         }
 
         footer: DialogButtonBox {
-            Button {
+            spacing: Theme.gapS
+            AppButton {
                 objectName: "confirmDeleteButton"
+                variant: "danger"
                 text: qsTr("删除")
                 onClicked: {
                     App.removeRecord(drawer.recordId)
@@ -173,7 +206,8 @@ Drawer {
                     drawer.close()
                 }
             }
-            Button {
+            AppButton {
+                variant: "ghost"
                 text: qsTr("取消")
                 onClicked: confirmDialog.close()
             }

@@ -20,6 +20,17 @@ class ApplicationModel : public QAbstractListModel
     Q_PROPERTY(int rejected READ rejected NOTIFY statsChanged)
     Q_PROPERTY(int offers READ offers NOTIFY statsChanged)
     Q_PROPERTY(int followUpDue READ followUpDue NOTIFY statsChanged)
+    // 筛选（§3.5）——统计条为全库口径；分区头计数为筛选后（visible*）
+    Q_PROPERTY(QString searchText READ searchText WRITE setSearchText NOTIFY filtersChanged)
+    Q_PROPERTY(QStringList statusFilter READ statusFilter WRITE setStatusFilter NOTIFY filtersChanged)
+    Q_PROPERTY(QString kindFilter READ kindFilter WRITE setKindFilter NOTIFY filtersChanged)
+    Q_PROPERTY(QString regionFilter READ regionFilter WRITE setRegionFilter NOTIFY filtersChanged)
+    Q_PROPERTY(bool followUpOnly READ followUpOnly WRITE setFollowUpOnly NOTIFY filtersChanged)
+    Q_PROPERTY(bool filtersActive READ filtersActive NOTIFY filtersChanged)
+    Q_PROPERTY(int visibleAppliedCount READ visibleAppliedCount NOTIFY statsChanged)
+    Q_PROPERTY(int visiblePendingCount READ visiblePendingCount NOTIFY statsChanged)
+    Q_PROPERTY(int visibleCount READ visibleCount NOTIFY statsChanged)
+    Q_PROPERTY(QStringList regionOptions READ regionOptions NOTIFY regionOptionsChanged)
 
 public:
     enum Roles {
@@ -71,25 +82,57 @@ public:
     int offers() const { return m_offers; }
     int followUpDue() const { return m_followUpDue; }
 
+    // ---- 筛选（§3.5）----
+    QString searchText() const { return m_searchText; }
+    void setSearchText(const QString &text);
+    QStringList statusFilter() const { return m_statusFilter; }
+    void setStatusFilter(const QStringList &statuses);
+    QString kindFilter() const { return m_kindFilter; }
+    void setKindFilter(const QString &kind);
+    QString regionFilter() const { return m_regionFilter; }
+    void setRegionFilter(const QString &region);
+    bool followUpOnly() const { return m_followUpOnly; }
+    void setFollowUpOnly(bool on);
+    Q_INVOKABLE void toggleFollowUpFilter();
+    Q_INVOKABLE void clearFilters();
+    bool filtersActive() const;
+    int visibleAppliedCount() const { return m_visibleApplied; }
+    int visiblePendingCount() const { return m_visiblePending; }
+    int visibleCount() const { return m_records.size(); }
+    QStringList regionOptions() const { return m_regionOptions; }
+
     static bool isFollowUpDue(const ApplicationRecord &r, const QDate &today);
 
 signals:
     void statsChanged();
     void recordChanged(qint64 id); // 抽屉刷新用
+    void filtersChanged();
+    void regionOptionsChanged();
 
 private:
     void reload();
     void recomputeStats();
+    void rebuildRegionOptions();
+    bool matchesFilters(const ApplicationRecord &r, const QDate &today) const;
     const ApplicationRecord *recordById(qint64 id) const;
     bool recordFromFields(const QVariantMap &fields, ApplicationRecord *rec) const;
 
     Database *m_db = nullptr;
-    QVector<ApplicationRecord> m_records;
+    QVector<ApplicationRecord> m_allRecords; // 全库（统计口径）
+    QVector<ApplicationRecord> m_records;    // 当前可见（筛选后，双段排序）
     int m_totalApplied = 0;
     int m_inProgress = 0;
     int m_rejected = 0;
     int m_offers = 0;
     int m_followUpDue = 0;
+    int m_visibleApplied = 0;
+    int m_visiblePending = 0;
+    QString m_searchText;
+    QStringList m_statusFilter;
+    QString m_kindFilter;
+    QString m_regionFilter;
+    bool m_followUpOnly = false;
+    QStringList m_regionOptions;
 };
 
 } // namespace applycompass

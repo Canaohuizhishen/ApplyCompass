@@ -27,6 +27,8 @@ class AppController : public QObject
     Q_PROPERTY(QStringList resumeVersionOptions READ resumeVersionOptions CONSTANT)
     Q_PROPERTY(QStringList kindOptions READ kindOptions CONSTANT)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
+    Q_PROPERTY(qreal uiZoom READ uiZoom NOTIFY uiZoomChanged)
+    Q_PROPERTY(QString lastExportMessage READ lastExportMessage NOTIFY lastExportMessageChanged)
 
 public:
     explicit AppController(QObject *parent = nullptr);
@@ -40,6 +42,17 @@ public:
     QStringList resumeVersionOptions() const;
     QStringList kindOptions() const;
     QString errorMessage() const;
+
+    // ---- 缩放（Ctrl+滚轮，Excel 式）----
+    qreal uiZoom() const;
+    Q_INVOKABLE void setUiZoom(qreal value); // 自动 clamp 到 [0.7, 1.6] 并持久化（10% 对齐）
+    Q_INVOKABLE void zoomBySteps(int steps); // 每步 ±10%
+
+    // ---- 导出（§3.6）----
+    QString lastExportMessage() const;
+    Q_INVOKABLE QVariantMap exportAll();      // 全量导出 xlsx+csv，返回 {ok,xlsx,csv,error,warning}
+    Q_INVOKABLE void clearExportMessage();
+    Q_INVOKABLE bool openExportFolder() const;
 
     // ---- QML 接口 ----
     Q_INVOKABLE QVariantMap recordDetails(qint64 id) const; // 详情/表单回填（全字段）
@@ -56,11 +69,17 @@ public:
 
 signals:
     void errorMessageChanged();
+    void uiZoomChanged();
+    void lastExportMessageChanged();
 
 private:
     void initialize();
 
+    static qreal clampedZoom(qreal value);
+
     std::unique_ptr<applycompass::Database> m_db;
     applycompass::ApplicationModel *m_model = nullptr;
     QString m_error;
+    qreal m_uiZoom = 1.0;
+    QString m_lastExportMessage;
 };

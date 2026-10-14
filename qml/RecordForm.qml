@@ -10,7 +10,13 @@ ColumnLayout {
     id: form
     objectName: "recordForm"
 
-    spacing: 8
+    spacing: Theme.gapS
+
+    // 字段标签统一样式
+    component FieldLabel: Label {
+        font.pixelSize: Theme.fontSmall
+        color: Theme.textSecondary
+    }
 
     readonly property string companyText: companyField.text
     readonly property string linkText: linkField.text
@@ -50,17 +56,17 @@ ColumnLayout {
     GridLayout {
         Layout.fillWidth: true
         columns: 4
-        columnSpacing: 10
-        rowSpacing: 8
+        columnSpacing: Theme.gapM
+        rowSpacing: Theme.gapS
 
-        Label { text: qsTr("公司 *") }
+        FieldLabel { text: qsTr("公司 *") }
         TextField {
             id: companyField
             objectName: "companyField"
             Layout.fillWidth: true
             placeholderText: qsTr("公司名称")
         }
-        Label { text: qsTr("岗位名称 *") }
+        FieldLabel { text: qsTr("岗位名称 *") }
         TextField {
             id: positionField
             objectName: "positionField"
@@ -68,7 +74,7 @@ ColumnLayout {
             placeholderText: qsTr("岗位名称")
         }
 
-        Label { text: qsTr("类型") }
+        FieldLabel { text: qsTr("类型") }
         ComboBox {
             id: kindCombo
             objectName: "kindCombo"
@@ -76,7 +82,7 @@ ColumnLayout {
             model: App.kindOptions
             currentIndex: 1
         }
-        Label { text: qsTr("地区") }
+        FieldLabel { text: qsTr("地区") }
         TextField {
             id: regionField
             objectName: "regionField"
@@ -84,7 +90,7 @@ ColumnLayout {
             placeholderText: qsTr("如：成都 / 北京")
         }
 
-        Label { text: qsTr("渠道") }
+        FieldLabel { text: qsTr("渠道") }
         ComboBox {
             id: channelCombo
             objectName: "channelCombo"
@@ -92,7 +98,7 @@ ColumnLayout {
             model: form.channelModel
             currentIndex: -1
         }
-        Label { text: qsTr("简历版本") }
+        FieldLabel { text: qsTr("简历版本") }
         ComboBox {
             id: resumeCombo
             objectName: "resumeCombo"
@@ -101,7 +107,7 @@ ColumnLayout {
             currentIndex: -1
         }
 
-        Label { text: qsTr("投递日期") }
+        FieldLabel { text: qsTr("投递日期") }
         TextField {
             id: applyDateField
             objectName: "applyDateField"
@@ -110,7 +116,7 @@ ColumnLayout {
             color: form.dateValid ? palette.text : "#c0392b"
             inputMethodHints: Qt.ImhDate
         }
-        Label { text: qsTr("跟进链接") }
+        FieldLabel { text: qsTr("跟进链接") }
         TextField {
             id: linkField
             objectName: "linkField"
@@ -118,7 +124,7 @@ ColumnLayout {
             placeholderText: "https://…"
         }
 
-        Label { text: qsTr("状态") }
+        FieldLabel { text: qsTr("状态") }
         ComboBox {
             id: statusCombo
             objectName: "statusCombo"
@@ -126,7 +132,7 @@ ColumnLayout {
             model: form.statusModel
             currentIndex: 0
         }
-        Label {
+        FieldLabel {
             text: qsTr("薪资")
             visible: form.offered
         }
@@ -140,10 +146,10 @@ ColumnLayout {
     }
 
     // ---- 多行文本 ----
-    Label { text: qsTr("职责") }
+    FieldLabel { text: qsTr("职责") }
     ScrollView {
         Layout.fillWidth: true
-        implicitHeight: 76
+        implicitHeight: Theme.s(76)
         TextArea {
             id: dutiesArea
             objectName: "dutiesArea"
@@ -152,10 +158,10 @@ ColumnLayout {
         }
     }
 
-    Label { text: qsTr("要求") }
+    FieldLabel { text: qsTr("要求") }
     ScrollView {
         Layout.fillWidth: true
-        implicitHeight: 76
+        implicitHeight: Theme.s(76)
         TextArea {
             id: requirementsArea
             objectName: "requirementsArea"
@@ -164,10 +170,10 @@ ColumnLayout {
         }
     }
 
-    Label { text: qsTr("备注") }
+    FieldLabel { text: qsTr("备注") }
     ScrollView {
         Layout.fillWidth: true
-        implicitHeight: 56
+        implicitHeight: Theme.s(56)
         TextArea {
             id: notesArea
             objectName: "notesArea"

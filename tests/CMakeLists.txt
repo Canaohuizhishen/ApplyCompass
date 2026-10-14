@@ -13,6 +13,14 @@ target_compile_definitions(tst_importer PRIVATE
     APPLYCOMPASS_LEGACY_XLSM="${CMAKE_CURRENT_SOURCE_DIR}/../../投递/我的投递记录_宏版.xlsm")
 add_test(NAME tst_importer COMMAND tst_importer)
 
+qt_add_executable(tst_model tst_model.cpp)
+target_link_libraries(tst_model PRIVATE applycompass_core Qt6::Test)
+add_test(NAME tst_model COMMAND tst_model)
+
+qt_add_executable(tst_export tst_export.cpp)
+target_link_libraries(tst_export PRIVATE applycompass_core Qt6::Test QXlsx::QXlsx)
+add_test(NAME tst_export COMMAND tst_export)
+
 # QuickTest（qmltestrunner 等价）：UI 场景 1–6 交互链路
 qt_add_executable(tst_ui quicktest_main.cpp)
 target_link_libraries(tst_ui PRIVATE applycompass_ui Qt6::Test Qt6::QuickTest)

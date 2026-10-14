@@ -43,6 +43,10 @@ public:
     bool addStatusEvent(qint64 applicationId, const QString &fromStatus, const QString &toStatus);
     QVector<StatusEvent> statusEvents(qint64 applicationId) const;
 
+    // 设置项（窗口布局/缩放等持久化；settings 表）
+    QString setting(const QString &key, const QString &defaultValue = QString()) const;
+    bool setSetting(const QString &key, const QString &value);
+
     // 备份：每日首启一次 + 退出一次；保留最近 keep 份。
     QString backupNow();              // 返回备份文件绝对路径；失败返回空串
     int rotateBackups(int keep = 14); // 返回删除的份数

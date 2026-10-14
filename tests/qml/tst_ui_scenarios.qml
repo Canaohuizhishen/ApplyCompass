@@ -21,6 +21,7 @@ TestCase {
 
     function init() {
         App.deleteAllRecords()
+        App.model.clearFilters()
         // createTemporaryObject 的生命周期＝当前测试函数：每个用例全新窗口（含布局重新成型）
         win = createTemporaryObject(mainComp, tc, { "visible": true })
         verify(win !== null)
@@ -271,5 +272,166 @@ TestCase {
         for (const k in expected)
             compare(Theme.statusColor(k), expected[k])
         compare(Theme.statusColor(""), "transparent")
+    }
+
+    // ---- Ctrl+滚轮缩放 ----
+    function test_zoomByCtrlWheelAndClamp() {
+        App.setUiZoom(1.0)
+        const table = findChild(win.contentItem, "applicationTable")
+        verify(table !== null)
+
+        mouseWheel(table, table.width / 2, table.height / 2, 0, 120, Qt.NoButton, Qt.ControlModifier)
+        tryCompare(App, "uiZoom", 1.1)
+        mouseWheel(table, table.width / 2, table.height / 2, 0, -120, Qt.NoButton, Qt.ControlModifier)
+        tryCompare(App, "uiZoom", 1.0)
+
+        for (let i = 0; i < 20; ++i)
+            App.zoomBySteps(1)
+        compare(App.uiZoom, 1.6) // 上限
+        for (let i = 0; i < 30; ++i)
+            App.zoomBySteps(-1)
+        compare(App.uiZoom, 0.7) // 下限
+
+        // 未按 Ctrl 的滚轮不触发缩放（交给列表自身滚动）
+        App.setUiZoom(1.0)
+        mouseWheel(table, table.width / 2, table.height / 2, 0, 120, Qt.NoButton, Qt.NoModifier)
+        compare(App.uiZoom, 1.0)
+
+        App.setUiZoom(1.0)
+        compare(App.uiZoom, 1.0)
+    }
+
+    // ---- 放大后表格超宽 → 横向滚动容器生效 ----
+    function test_horizontalScrollWhenZoomedIn() {
+        App.setUiZoom(1.0)
+        const scroll = findChild(win.contentItem, "tableScroll")
+        verify(scroll !== null)
+        // 100%：窗口宽（1320）≥ 表宽（≈1244），无需横滚
+        tryVerify(function() { return scroll.contentWidth <= scroll.width + 1 })
+
+        App.setUiZoom(1.5)
+        tryVerify(function() { return scroll.contentWidth > scroll.width })
+
+        App.setUiZoom(1.0)
+    }
+
+    // ---- 缩放驱动设计令牌 ----
+    function test_zoomScalesThemeTokens() {
+        App.setUiZoom(1.0)
+        const baseWidth = Theme.colWidths.company
+        const baseRow = Theme.rowHeight
+        verify(baseWidth > 0 && baseRow > 0)
+
+        App.setUiZoom(1.5)
+        tryVerify(function() { return Theme.colWidths.company > baseWidth })
+        compare(Theme.colWidths.company, Math.round(176 * 1.5))
+        compare(Theme.rowHeight, Math.round(32 * 1.5))
+
+        App.setUiZoom(1.0)
+    }
+
+    // ---- 快捷键与选中行（§3.7） ----
+    function test_keyboardShortcuts() {
+        const idA = App.addRecord({ "company": "键甲", "position": "p" })
+        App.addRecord({ "company": "键乙", "position": "p" })
+        const table = findChild(win.contentItem, "applicationTable")
+        verify(table !== null)
+        table.forceActiveFocus()
+        wait(50)
+
+        // ↑↓ 选中行
+        keyClick(Qt.Key_Down)
+        tryVerify(function() { return table.currentId === idA })
+        keyClick(Qt.Key_Down)
+        tryVerify(function() { return table.currentId !== idA && table.currentId > 0 })
+        keyClick(Qt.Key_Up)
+        tryVerify(function() { return table.currentId === idA })
+
+        // 1-9：为选中行改状态
+        keyClick(Qt.Key_1) // 初筛
+        tryVerify(function() { return App.recordDetails(idA).status === "初筛" })
+        compare(App.model.totalApplied, 1)
+
+        // Enter：打开选中行详情
+        keyClick(Qt.Key_Return)
+        const drawer = findChild(win, "detailsDrawer")
+        tryVerify(function() { return drawer.opened })
+        drawer.close()
+        wait(50)
+
+        // n：打开添加表单（等待抽屉退场动画结束——退场期间弹层会短暂拦截按键）
+        table.forceActiveFocus()
+        wait(400)
+        keyClick(Qt.Key_N)
+        const dlg = findChild(win, "addDialog")
+        tryVerify(function() { return dlg.opened })
+        dlg.close()
+    }
+
+    // ---- 搜索与筛选（§3.5） ----
+    function test_searchAndFilters() {
+        App.addRecord({ "company": "搜索甲科技", "position": "后端开发", "region": "成都", "notes": "注意备注A" })
+        App.addRecord({ "company": "搜索乙网络", "position": "客户端开发", "region": "北京" })
+        App.addRecord({ "company": "其他丙", "position": "测试开发", "status": "初筛", "region": "成都" })
+
+        // 公司 / 岗位 / 备注 / 地区 模糊匹配
+        App.model.searchText = "搜索甲"
+        tryVerify(function() { return App.model.count() === 1 })
+        compare(App.model.recordAtRow(0).company, "搜索甲科技")
+        App.model.searchText = "客户端"
+        tryVerify(function() { return App.model.count() === 1 })
+        App.model.searchText = "备注A"
+        tryVerify(function() { return App.model.count() === 1 })
+        App.model.searchText = "成都"
+        tryVerify(function() { return App.model.count() === 2 })
+        App.model.searchText = ""
+        tryVerify(function() { return App.model.count() === 3 })
+
+        // 地区 + 搜索叠加；分区头计数=筛选后口径（搜索甲科技为无状态记录 → 在待投区）
+        App.model.regionFilter = "成都"
+        tryVerify(function() { return App.model.count() === 2 })
+        App.model.searchText = "搜索甲"
+        tryVerify(function() { return App.model.count() === 1 })
+        compare(App.model.visibleAppliedCount, 0)
+        compare(App.model.visiblePendingCount, 1)
+
+        // 清除 → 全量恢复
+        App.model.clearFilters()
+        tryVerify(function() { return App.model.count() === 3 })
+        compare(App.model.filtersActive, false)
+        compare(App.model.visiblePendingCount, 2)
+
+        // 状态多选
+        App.model.statusFilter = ["初筛", "Offer"]
+        tryVerify(function() { return App.model.count() === 1 })
+        compare(App.model.recordAtRow(0).company, "其他丙")
+        App.model.clearFilters()
+
+        // 顶栏「待跟进」chip 点击切换筛选
+        const chip = findChild(win, "followUpChip")
+        verify(chip !== null)
+        mouseClick(chip)
+        tryVerify(function() { return App.model.followUpOnly === true })
+        mouseClick(chip)
+        tryVerify(function() { return App.model.followUpOnly === false })
+    }
+
+    // ---- 导出（§3.6）：按钮触发 → 消息 + 返回结构 ----
+    function test_exportViaUi() {
+        App.addRecord({ "company": "导出甲", "position": "p", "status": "初筛",
+                        "link": "https://example.com/job/9" })
+        App.addRecord({ "company": "导出乙", "position": "p" })
+        App.clearExportMessage()
+
+        const exportButton = findChild(win, "exportButton")
+        verify(exportButton !== null)
+        mouseClick(exportButton)
+        tryVerify(function() { return App.lastExportMessage !== "" })
+        verify(App.lastExportMessage.indexOf("已导出") === 0)
+
+        const res = App.exportAll() // 复跑校验返回结构（幂等）
+        compare(res.ok, true)
+        verify(res.xlsx !== "")
+        verify(res.csv !== "")
     }
 }

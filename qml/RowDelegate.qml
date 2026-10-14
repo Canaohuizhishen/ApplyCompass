@@ -13,17 +13,35 @@ Item {
     width: ListView.view ? ListView.view.width : implicitWidth
     height: Theme.rowHeight
 
-    // 行标识（测试与后续键盘导航用）
+    // 行标识（测试与键盘导航用）
     readonly property int recordId: model.id
     readonly property string companyText: model.company
+    readonly property bool selected: ListView.view && ListView.view.currentId === model.id
 
     signal rowClicked(int recordId)
 
     Rectangle {
         anchors.fill: parent
-        color: rowMouse.containsMouse
-               ? Theme.rowHoverColor
-               : (index % 2 === 0 ? "#ffffff" : Theme.rowAltColor)
+        color: selected ? Theme.primarySoft                    // 键盘选中
+              : rowMouse.containsMouse ? Theme.rowHoverColor
+              : model.followUpDue ? Theme.followUpBg          // 待跟进浅黄（§2.3）
+              : Theme.surface
+    }
+    // 待跟进左缘琥珀条
+    Rectangle {
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: Theme.s(3)
+        color: Theme.followUpAccent
+        visible: model.followUpDue
+    }
+    // 发丝分隔线
+    Rectangle {
+        anchors.bottom: parent.bottom
+        width: parent.width
+        height: 1
+        color: Theme.separator
     }
 
     MouseArea {
@@ -35,8 +53,8 @@ Item {
 
     Row {
         anchors.fill: parent
-        anchors.leftMargin: 8
-        anchors.rightMargin: 8
+        anchors.leftMargin: Theme.colMargin
+        anchors.rightMargin: Theme.colMargin
 
         Text {
             width: Theme.colWidths.company
@@ -44,7 +62,8 @@ Item {
             verticalAlignment: Text.AlignVCenter
             text: model.company
             elide: Text.ElideRight
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontBody
+            color: Theme.textPrimary
         }
         Text {
             width: Theme.colWidths.position
@@ -52,27 +71,28 @@ Item {
             verticalAlignment: Text.AlignVCenter
             text: model.position
             elide: Text.ElideRight
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontBody
+            color: Theme.textPrimary
         }
 
-        // 类型徽标
+        // 类型徽标（胶囊）
         Item {
             width: Theme.colWidths.kind
             height: parent.height
             Rectangle {
                 anchors.centerIn: parent
-                width: kindText.implicitWidth + 12
-                height: 18
-                radius: 3
-                color: model.kind === "实习" ? "#e4f2ee" : "#edeff7"
+                width: kindText.implicitWidth + Theme.gapM
+                height: Theme.s(18)
+                radius: height / 2
+                color: model.kind === "实习" ? Theme.kindInternBg : Theme.kindFormalBg
                 border.width: 1
-                border.color: model.kind === "实习" ? "#8fbfb0" : "#a8b0cc"
+                border.color: model.kind === "实习" ? Theme.kindInternBorder : Theme.kindFormalBorder
                 Text {
                     id: kindText
                     anchors.centerIn: parent
                     text: model.kind
-                    font.pixelSize: 11
-                    color: "#3c3c3c"
+                    font.pixelSize: Theme.fontBadge
+                    color: Theme.kindText
                 }
             }
         }
@@ -83,14 +103,16 @@ Item {
             verticalAlignment: Text.AlignVCenter
             text: model.region
             elide: Text.ElideRight
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontBody
+            color: Theme.textSecondary
         }
         Text {
             width: Theme.colWidths.applyDate
             height: parent.height
             verticalAlignment: Text.AlignVCenter
             text: model.applyDateText
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontSmall
+            color: Theme.textSecondary
         }
         Text {
             width: Theme.colWidths.channel
@@ -98,7 +120,8 @@ Item {
             verticalAlignment: Text.AlignVCenter
             text: model.channel
             elide: Text.ElideRight
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontSmall
+            color: Theme.textSecondary
         }
 
         // 状态块（单击快改）
@@ -118,7 +141,8 @@ Item {
             height: parent.height
             verticalAlignment: Text.AlignVCenter
             text: model.statusUpdatedText
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontSmall
+            color: Theme.textSecondary
         }
         Text {
             width: Theme.colWidths.resume
@@ -126,7 +150,8 @@ Item {
             verticalAlignment: Text.AlignVCenter
             text: model.resumeVersion
             elide: Text.ElideRight
-            font.pixelSize: 13
+            font.pixelSize: Theme.fontSmall
+            color: Theme.textSecondary
         }
 
         // 跟进链接（有链接才亮；点击用系统浏览器打开）
@@ -136,8 +161,8 @@ Item {
             Text {
                 anchors.centerIn: parent
                 text: "\u2197"
-                font.pixelSize: 16
-                color: model.hasLink ? Theme.linkColor : "#d5d5d5"
+                font.pixelSize: Theme.s(16)
+                color: model.hasLink ? Theme.linkColor : Theme.linkIdleColor
             }
             MouseArea {
                 anchors.fill: parent
@@ -152,20 +177,20 @@ Item {
         Row {
             width: Theme.colWidths.dots
             height: parent.height
-            spacing: 5
+            spacing: Theme.s(5)
             Rectangle {
-                y: (parent.height - 8) / 2
-                width: 8; height: 8; radius: 4
+                y: (parent.height - height) / 2
+                width: Theme.s(8); height: Theme.s(8); radius: height / 2
                 color: model.hasDuties ? Theme.dotOnColor : Theme.dotOffColor
             }
             Rectangle {
-                y: (parent.height - 8) / 2
-                width: 8; height: 8; radius: 4
+                y: (parent.height - height) / 2
+                width: Theme.s(8); height: Theme.s(8); radius: height / 2
                 color: model.hasRequirements ? Theme.dotOnColor : Theme.dotOffColor
             }
             Rectangle {
-                y: (parent.height - 8) / 2
-                width: 8; height: 8; radius: 4
+                y: (parent.height - height) / 2
+                width: Theme.s(8); height: Theme.s(8); radius: height / 2
                 color: model.hasNotes ? Theme.dotOnColor : Theme.dotOffColor
             }
         }
