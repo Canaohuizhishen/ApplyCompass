@@ -16,6 +16,14 @@ Dialog {
     standardButtons: Dialog.NoButton
     closePolicy: Popup.CloseOnEscape
 
+    // 轻量淡入淡出（M3 动效）
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.dur }
+    }
+    exit: Transition {
+        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.durFast }
+    }
+
     background: Rectangle {
         color: Theme.surface
         radius: Theme.radiusCard

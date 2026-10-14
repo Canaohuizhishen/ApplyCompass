@@ -3,10 +3,12 @@
 #include <algorithm>
 #include <cmath>
 
+#include <QClipboard>
 #include <QCoreApplication>
 #include <QDesktopServices>
 #include <QGuiApplication>
 #include <QQmlEngine>
+#include <QScreen>
 #include <QStyleHints>
 #include <QUrl>
 
@@ -169,7 +171,9 @@ void AppController::recomputeDarkMode()
 void AppController::applyDarkModePalette()
 {
     // 显式设置双调色板（而非依赖环境基线）：保证 FORCE 覆盖、跟随时切换两向
-    // 都得到与控制令牌一致的外观（本机 KDE 暗色下环境调色板本身偏暗，不可依赖）
+    // 都得到与控制令牌一致的外观（本机 KDE 暗色下环境调色板本身偏暗，不可依赖）。
+    // 注：个别子树（如 Drawer 内的 QQC2 控件）在 KDE 平台主题下会解析到系统调色板，
+    // 由 DetailsDrawer.qml 内容根上的显式 palette 角色固定（与下列色值一致）。
     if (QGuiApplication *gui = guiApp())
         gui->setPalette(m_darkMode ? darkPalette() : lightPalette());
 }
@@ -301,6 +305,60 @@ QString AppController::lastExportMessage() const
     return m_lastExportMessage;
 }
 
+QVariantMap AppController::loadWindowState() const
+{
+    QVariantMap m;
+    if (!m_db || !m_db->isOpen())
+        return m;
+    const QString wStr = m_db->setting(QStringLiteral("winWidth"), QString());
+    if (wStr.isEmpty())
+        return m; // 从未保存过 → 空 map（QML 保持默认）
+
+    int x = m_db->setting(QStringLiteral("winX"), QStringLiteral("-1")).toInt();
+    int y = m_db->setting(QStringLiteral("winY"), QStringLiteral("-1")).toInt();
+    // 最小尺寸 clamp（与 Main.qml minimumWidth/minimumHeight 对齐）
+    int w = qMax(wStr.toInt(), 980);
+    int h = qMax(m_db->setting(QStringLiteral("winHeight"), QStringLiteral("820")).toInt(), 560);
+    const bool maximized =
+        m_db->setting(QStringLiteral("winMaximized"), QStringLiteral("0")) == QLatin1String("1");
+
+    // 屏幕越界校验（防丢窗）：几何中心不落在任何屏幕可用区域内 → 丢弃位置，交给系统放置
+    if (x >= 0 && y >= 0 && QGuiApplication::instance()) {
+        const QPoint center(x + w / 2, y + h / 2);
+        bool onScreen = false;
+        const QList<QScreen *> screens = QGuiApplication::screens();
+        for (QScreen *s : screens) {
+            if (s->availableGeometry().contains(center)) {
+                onScreen = true;
+                break;
+            }
+        }
+        if (!onScreen) {
+            x = -1;
+            y = -1;
+        }
+    }
+
+    m.insert(QStringLiteral("x"), x);
+    m.insert(QStringLiteral("y"), y);
+    m.insert(QStringLiteral("width"), w);
+    m.insert(QStringLiteral("height"), h);
+    m.insert(QStringLiteral("maximized"), maximized);
+    return m;
+}
+
+void AppController::saveWindowState(int x, int y, int width, int height, bool maximized)
+{
+    if (!m_db || !m_db->isOpen())
+        return;
+    m_db->setSetting(QStringLiteral("winX"), QString::number(x));
+    m_db->setSetting(QStringLiteral("winY"), QString::number(y));
+    m_db->setSetting(QStringLiteral("winWidth"), QString::number(width));
+    m_db->setSetting(QStringLiteral("winHeight"), QString::number(height));
+    m_db->setSetting(QStringLiteral("winMaximized"), maximized ? QStringLiteral("1")
+                                                               : QStringLiteral("0"));
+}
+
 QVariantMap AppController::exportAll()
 {
     QVariantMap res;
@@ -398,4 +456,15 @@ bool AppController::openLink(const QString &url) const
     if (t.isEmpty())
         return false;
     return QDesktopServices::openUrl(QUrl::fromUserInput(t));
+}
+
+void AppController::copyRows(int firstRow, int lastRow)
+{
+    if (!m_model)
+        return;
+    const QString tsv = m_model->tsvText(firstRow, lastRow);
+    if (tsv.isEmpty())
+        return;
+    if (QGuiApplication *gui = guiApp())
+        gui->clipboard()->setText(tsv);
 }

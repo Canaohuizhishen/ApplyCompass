@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Effects
 
 import ApplyCompass
 
@@ -21,7 +22,8 @@ Item {
     // 行标识（测试与键盘导航用）
     readonly property int recordId: model.id
     readonly property string companyText: model.company
-    readonly property bool selected: ListView.view && ListView.view.currentId === model.id
+    // 键盘选中（含 Shift 区间，M3 复制）：由视图统一判定
+    readonly property bool selected: ListView.view ? ListView.view.isRowSelected(model.id) : false
 
     // 行底色（优先级见文件头注释）
     readonly property color rowBaseColor: model.followUpDue ? Theme.followUpBg
@@ -50,7 +52,9 @@ Item {
         objectName: "rowHoverOverlay"
         anchors.fill: parent
         color: Theme.rowHoverOverlay
-        visible: rowMouse.containsMouse || root.selected
+        opacity: rowMouse.containsMouse || root.selected ? 1 : 0
+        visible: opacity > 0
+        Behavior on opacity { NumberAnimation { duration: Theme.durFast } }
     }
     // 键盘选中：主色内描边（在任意底色上都清晰）
     Rectangle {
@@ -183,11 +187,19 @@ Item {
         Item {
             width: Theme.colWidths.link
             height: parent.height
-            Text {
+            Image {
+                id: linkIcon
+                objectName: "linkIcon"
                 anchors.centerIn: parent
-                text: "\u2197"
-                font.pixelSize: Theme.s(16)
-                color: model.hasLink ? Theme.linkColor : Theme.linkIdleColor
+                source: "icons/link.svg"
+                sourceSize.width: Theme.s(14)
+                sourceSize.height: Theme.s(14)
+            }
+            MultiEffect {
+                anchors.fill: linkIcon
+                source: linkIcon
+                colorization: 1.0
+                colorizationColor: model.hasLink ? Theme.linkColor : Theme.linkIdleColor
             }
             MouseArea {
                 anchors.fill: parent

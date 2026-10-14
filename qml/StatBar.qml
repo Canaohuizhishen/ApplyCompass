@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 
 import ApplyCompass
 
@@ -16,10 +17,13 @@ Row {
         implicitWidth: content.implicitWidth + Theme.gapM * 2
         implicitHeight: Theme.s(28)
 
+        Behavior on color { ColorAnimation { duration: Theme.durFast } }
+
         property alias label: labelText.text
         property alias value: valueText.text
         property color valueColor: Theme.textPrimary
         property bool clickable: false
+        property string iconSource: ""
         signal clicked()
 
         Row {
@@ -27,6 +31,26 @@ Row {
             anchors.centerIn: parent
             spacing: Theme.gapXS
 
+            // 注意：Row 位置器忽略带 anchors 的子项——图标经固定尺寸 Item 包装、文本自然尺寸
+            Item {
+                width: chip.iconSource !== "" ? Theme.s(13) : 0
+                height: Theme.s(13)
+                visible: chip.iconSource !== ""
+
+                Image {
+                    id: chipIcon
+                    anchors.fill: parent
+                    source: chip.iconSource
+                    sourceSize.width: Theme.s(13)
+                    sourceSize.height: Theme.s(13)
+                }
+                MultiEffect {
+                    anchors.fill: chipIcon
+                    source: chipIcon
+                    colorization: 1.0
+                    colorizationColor: chip.valueColor
+                }
+            }
             Text {
                 id: labelText
                 font.pixelSize: Theme.fontSmall
@@ -54,7 +78,8 @@ Row {
     Chip { label: "Offer"; value: "" + App.model.offers }
     Chip {
         objectName: "followUpChip"
-        label: qsTr("⚠ 待跟进")
+        label: qsTr("待跟进")
+        iconSource: "icons/warn.svg"
         value: "" + App.model.followUpDue
         valueColor: App.model.followUpDue > 0 || App.model.followUpOnly
                     ? Theme.followUpText : Theme.textTertiary

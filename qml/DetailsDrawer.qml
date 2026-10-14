@@ -51,6 +51,25 @@ Drawer {
         anchors.margins: Theme.gapL
         spacing: Theme.gapM
 
+        // 显式固定调色板：本机环境（KDE 平台主题）下抽屉子树的 QQC2 控件会解析到
+        // 系统（Breeze）调色板而非应用调色板（对话框/主窗口不受影响），导致浅色主题
+        // 下表单控件仍是暗色。这里在内容根上直接钉住与 Theme 一致的角色值，子项继承。
+        palette.base: Theme.dark ? "#161A22" : "#FFFFFF"
+        palette.alternateBase: Theme.dark ? "#1A1E27" : "#FAFBFC"
+        palette.window: Theme.dark ? "#1E222A" : "#FFFFFF"
+        palette.windowText: Theme.textPrimary
+        palette.text: Theme.textPrimary
+        palette.placeholderText: Theme.textTertiary
+        palette.button: Theme.dark ? "#2A2F3A" : "#F2F4F7"
+        palette.buttonText: Theme.textPrimary
+        palette.highlight: Theme.primary
+        palette.highlightedText: "#FFFFFF"
+        palette.light: Theme.dark ? "#4A5262" : "#FFFFFF"
+        palette.midlight: Theme.dark ? "#323946" : "#E4E7EC"
+        palette.mid: Theme.dark ? "#3A4150" : "#D0D5DD"
+        palette.dark: Theme.dark ? "#20252F" : "#98A2B3"
+        palette.shadow: Theme.dark ? "#0D1015" : "#D0D5DD"
+
         ZoomWheelHandler { }
 
         RowLayout {
@@ -65,7 +84,8 @@ Drawer {
             AppButton {
                 objectName: "closeDrawerButton"
                 variant: "ghost"
-                text: "\u2715"
+                icon.source: "icons/close.svg"
+                icon.color: Theme.textPrimary
                 onClicked: drawer.close()
             }
         }
@@ -157,6 +177,7 @@ Drawer {
                 objectName: "deleteButton"
                 variant: "danger"
                 text: qsTr("删除该行")
+                icon.source: "icons/trash.svg"
                 onClicked: confirmDialog.open()
             }
             Item { Layout.fillWidth: true }

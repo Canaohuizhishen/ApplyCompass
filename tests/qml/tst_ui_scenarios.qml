@@ -315,6 +315,84 @@ TestCase {
         App.setDarkModeOverride(-1)
     }
 
+    // ---- 深浅色跟随/覆盖（M3）：令牌随 darkMode 切换；状态语义色恒定 ----
+    function test_darkModeFollowOverride() {
+        App.setDarkModeOverride(1)
+        tryVerify(function() { return Theme.dark === true })
+        compare(Theme.surface.toString().toUpperCase(), "#171B23")
+        compare(Theme.statusColor("初筛"), "#E7E6E6") // 两模式下不变（旧表锚定）
+
+        App.setDarkModeOverride(0)
+        tryVerify(function() { return Theme.dark === false })
+        compare(Theme.surface.toString().toUpperCase(), "#FFFFFF")
+
+        App.setDarkModeOverride(-1)
+    }
+
+    // ---- Ctrl+C 复制（M3）：Shift 区间多选 + 锚点语义 ----
+    function test_copySelectionTsv() {
+        const idA = App.addRecord({ "company": "复制甲", "position": "p1", "status": "初筛", "applyDate": "2026-10-01" })
+        App.addRecord({ "company": "复制乙", "position": "p2" })
+        const idC = App.addRecord({ "company": "复制丙", "position": "p3" })
+        const table = findChild(win.contentItem, "applicationTable")
+        verify(table !== null)
+        table.forceActiveFocus()
+        wait(50)
+
+        // 单行：Down → 选中已投区首行（复制甲）
+        keyClick(Qt.Key_Down)
+        tryVerify(function() { return table.currentId === idA })
+        compare(table.selectedRange().first, table.selectedRange().last)
+
+        // Shift+Down ×2 → 区间 0..2（复制甲..复制丙）
+        keyClick(Qt.Key_Down, Qt.ShiftModifier)
+        keyClick(Qt.Key_Down, Qt.ShiftModifier)
+        tryVerify(function() {
+            return table.selectedRange().first === 0 && table.selectedRange().last === 2
+        })
+
+        // 区间高亮：首尾行均 selected
+        const rowA = rowItem(idA)
+        const rowC = rowItem(idC)
+        verify(rowA !== null && rowC !== null)
+        tryVerify(function() { return rowA.selected && rowC.selected })
+
+        // Ctrl+C：触发复制（TSV 内容由 tst_model.tsvTextFormat 锚定）
+        keyClick(Qt.Key_C, Qt.ControlModifier)
+
+        // 普通移动重置锚点 → 回到单行选择
+        keyClick(Qt.Key_Up)
+        tryVerify(function() {
+            return table.selectedRange().first === table.selectedRange().last
+        })
+    }
+
+    // ---- 窗口布局记忆（M3）：保存/读取往返 + 屏幕越界防护 ----
+    function test_windowStateRoundtrip() {
+        App.saveWindowState(120, 90, 1180, 660, false)
+        let s = App.loadWindowState()
+        compare(s.x, 120)
+        compare(s.y, 90)
+        compare(s.width, 1180)
+        compare(s.height, 660)
+        compare(s.maximized, false)
+
+        // 越界位置 → 丢弃坐标（防丢窗）
+        App.saveWindowState(99999, 99999, 1000, 640, false)
+        s = App.loadWindowState()
+        compare(s.x, -1)
+        compare(s.y, -1)
+        compare(s.width, 1000) // 尺寸仍恢复（≥ 最小尺寸）
+
+        // 最大化标记往返
+        App.saveWindowState(-1, -1, 1000, 640, true)
+        s = App.loadWindowState()
+        compare(s.maximized, true)
+
+        // 恢复默认，避免影响后续用例建窗
+        App.saveWindowState(-1, -1, 1320, 820, false)
+    }
+
     // ---- Ctrl+滚轮缩放 ----
     function test_zoomByCtrlWheelAndClamp() {
         App.setUiZoom(1.0)

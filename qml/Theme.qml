@@ -17,6 +17,11 @@ QtObject {
     function s(v) { return Math.round(v * zoom) }                 // 尺寸
     function fs(v) { return Math.max(9, Math.round(v * zoom)) }   // 字号（pixelSize 为 int）
 
+    // ---------------- 动效时长（M3） ----------------
+    readonly property int durFast: 120   // 悬停/颜色过渡
+    readonly property int dur: 150       // 标准（对话框淡入）
+    readonly property int durSlow: 180   // toast 淡入淡出等大件
+
     // ---------------- 颜色：基础 ----------------
     readonly property color bg: dark ? "#11151C" : "#F5F6F8"          // 窗口底
     readonly property color surface: dark ? "#171B23" : "#FFFFFF"      // 表面（表格/卡片）

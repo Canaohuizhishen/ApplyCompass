@@ -74,6 +74,8 @@ public:
     Q_INVOKABLE int rowOfRecord(qint64 id) const;                // id → 当前行号（找不到 -1）
     Q_INVOKABLE QVariantMap recordAtRow(int row) const;          // 行号 → 全字段（含 id）
     Q_INVOKABLE int count() const { return m_records.size(); }   // 总行数（已投+待投）
+    // 选中行区间 → TSV 文本（含表头，10 个文本列；Ctrl+C 复制用，M3）
+    QString tsvText(int firstRow, int lastRow) const;
 
     // ---- 统计（设计文档 §3.1 统计条）----
     int totalApplied() const { return m_totalApplied; }

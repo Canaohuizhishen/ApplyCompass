@@ -17,6 +17,41 @@ ApplicationWindow {
     color: Theme.bg
     title: qsTr("投递罗盘 · ApplyCompass")
 
+    // 窗口布局记忆（M3，§10）：恢复大小/最大化/位置（含屏幕越界校验，防丢窗）。
+    // Wayland 下窗口位置由合成器掌控（setPosition 不生效）——位置尽力而为，尺寸/最大化可靠。
+    Component.onCompleted: {
+        const s = App.loadWindowState()
+        if (s.width === undefined)
+            return
+        if (s.maximized === true) {
+            visibility = Window.Maximized
+        } else {
+            if (s.x >= 0 && s.y >= 0) {
+                x = s.x
+                y = s.y
+            }
+            width = s.width
+            height = s.height
+        }
+    }
+    function persistWindowState() {
+        if (window.visibility === Window.Maximized || window.visibility === Window.FullScreen)
+            App.saveWindowState(-1, -1, window.width, window.height, true)
+        else
+            App.saveWindowState(window.x, window.y, window.width, window.height, false)
+    }
+    // 变更去抖（600ms）+ 关闭时落盘
+    Timer {
+        id: geometryDebounce
+        interval: 600
+        onTriggered: window.persistWindowState()
+    }
+    onXChanged: geometryDebounce.restart()
+    onYChanged: geometryDebounce.restart()
+    onWidthChanged: geometryDebounce.restart()
+    onHeightChanged: geometryDebounce.restart()
+    onClosing: window.persistWindowState()
+
     // Ctrl+Q 退出（优雅退出会触发退出备份，§3.8）
     Shortcut {
         sequences: [StandardKey.Quit]
@@ -143,7 +178,8 @@ ApplicationWindow {
             AppButton {
                 objectName: "addButton"
                 variant: "primary"
-                text: qsTr("+ 添加")
+                text: qsTr("添加")
+                icon.source: "icons/plus.svg"
                 onClicked: addDialog.openForNew()
             }
 
@@ -151,6 +187,7 @@ ApplicationWindow {
                 objectName: "exportButton"
                 variant: "ghost"
                 text: qsTr("导出")
+                icon.source: "icons/export.svg"
                 onClicked: App.exportAll()
             }
 
@@ -259,7 +296,9 @@ ApplicationWindow {
                     id: followUpToggle
                     objectName: "followUpToggle"
                     checkable: true
-                    text: qsTr("⚠ 待跟进")
+                    text: qsTr("待跟进")
+                    icon.source: "icons/warn.svg"
+                    icon.color: Theme.followUpText
                     onToggled: App.model.followUpOnly = checked
                 }
 
@@ -345,6 +384,7 @@ ApplicationWindow {
                         width: parent.width
                         height: parent.height - tableHeader.height
                         onRowClicked: (recordId) => drawer.openFor(recordId)
+                        onEmptyAddRequested: addDialog.openForNew()
                     }
                 }
 
@@ -365,8 +405,13 @@ ApplicationWindow {
         width: toastText.implicitWidth + Theme.gapL * 2
         height: Theme.s(36)
         radius: Theme.radiusCard
-        color: "#101828"
-        visible: App.lastExportMessage !== ""
+        // 悬浮提示：两主题都维持“深底浅字”浮层观感；暗色下加边界与背景区分
+        color: Theme.dark ? "#232935" : "#101828"
+        border.width: Theme.dark ? 1 : 0
+        border.color: Theme.dark ? "#3A4150" : "transparent"
+        visible: opacity > 0
+        opacity: App.lastExportMessage !== "" ? 1 : 0
+        Behavior on opacity { NumberAnimation { duration: Theme.durSlow } }
         z: 200
 
         Text {

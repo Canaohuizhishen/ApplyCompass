@@ -58,6 +58,10 @@ public:
     // -1=跟随系统；0=强制浅色；1=强制深色（会话级；测试与截图用，见 APPLYCOMPASS_FORCE_DARK/LIGHT）
     Q_INVOKABLE void setDarkModeOverride(int mode);
 
+    // ---- 窗口布局记忆（M3，§10）：大小/最大化可靠；位置 Wayland 下尽力而为 ----
+    // 返回 {x,y,width,height,maximized}；从未保存过 → 空 map。含屏幕越界校验（防丢窗）。
+    Q_INVOKABLE QVariantMap loadWindowState() const;
+    Q_INVOKABLE void saveWindowState(int x, int y, int width, int height, bool maximized);
     // ---- 导出（§3.6）----
     QString lastExportMessage() const;
     Q_INVOKABLE QVariantMap exportAll();      // 全量导出 xlsx+csv，返回 {ok,xlsx,csv,error,warning}
@@ -76,6 +80,7 @@ public:
     Q_INVOKABLE bool removeRecord(qint64 id);
     Q_INVOKABLE void deleteAllRecords();                    // 维护/测试用
     Q_INVOKABLE bool openLink(const QString &url) const;    // 系统浏览器打开
+    Q_INVOKABLE void copyRows(int firstRow, int lastRow);   // Ctrl+C：选中行区间 → TSV 剪贴板（M3）
 
 signals:
     void errorMessageChanged();

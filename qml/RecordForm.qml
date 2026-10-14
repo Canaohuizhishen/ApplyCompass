@@ -113,7 +113,7 @@ ColumnLayout {
             objectName: "applyDateField"
             Layout.fillWidth: true
             placeholderText: "yyyy-MM-dd"
-            color: form.dateValid ? palette.text : "#c0392b"
+            color: form.dateValid ? palette.text : Theme.danger
             inputMethodHints: Qt.ImhDate
         }
         FieldLabel { text: qsTr("跟进链接") }

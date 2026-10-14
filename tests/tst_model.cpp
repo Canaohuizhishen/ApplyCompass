@@ -19,6 +19,7 @@ private slots:
 
     void followUpDueBoundary();
     void filtersAndCounts();
+    void tsvTextFormat();
 
 private:
     std::unique_ptr<QTemporaryDir> m_tmp;
@@ -123,6 +124,49 @@ void TstModel::filtersAndCounts()
     QCOMPARE(model.count(), 2);
 }
 
-QTEST_GUILESS_MAIN(TstModel)
+// 选中行 TSV（Ctrl+C 复制，M3）：表头、范围钳制/交换、单元格净化
+void TstModel::tsvTextFormat()
+{
+    ApplicationRecord r1;
+    r1.company = QStringLiteral("甲科技");
+    r1.position = QStringLiteral("后端");
+    r1.kind = QStringLiteral("实习");
+    r1.region = QStringLiteral("成都");
+    r1.applyDate = QDate(2026, 10, 1);
+    r1.channel = QStringLiteral("BOSS");
+    r1.status = QStringLiteral("初筛");
+    r1.statusUpdated = QDate(2026, 10, 2);
+    r1.resumeVersion = QStringLiteral("C++服务端开发");
+    r1.link = QStringLiteral("https://a.example/\nb"); // 含换行 → 净化
+    r1.sortIndex = 1;
+    QVERIFY(m_db->insertRecord(r1) > 0);
 
+    ApplicationRecord r2; // 待投
+    r2.company = QStringLiteral("乙网络");
+    r2.position = QStringLiteral("客户端");
+    r2.sortIndex = 2;
+    QVERIFY(m_db->insertRecord(r2) > 0);
+
+    ApplicationModel model(m_db.get());
+    QCOMPARE(model.count(), 2); // 已投区在前
+
+    const QString tsv = model.tsvText(0, 1);
+    const QStringList lines = tsv.split(QLatin1Char('\n'));
+    QCOMPARE(lines.size(), 3);
+    QCOMPARE(lines.at(0), QStringLiteral(
+                            "公司\t岗位\t类型\t地区\t投递日期\t渠道\t状态\t状态更新\t简历版本\t链接"));
+    QCOMPARE(lines.at(1), QStringLiteral(
+                            "甲科技\t后端\t实习\t成都\t2026-10-01\tBOSS\t初筛\t2026-10-02"
+                            "\tC++服务端开发\thttps://a.example/ b"));
+    QVERIFY(!lines.at(1).contains(QLatin1Char('\r')));
+    QVERIFY(lines.at(2).startsWith(QStringLiteral("乙网络\t客户端")));
+    QVERIFY(lines.at(2).contains(QStringLiteral("\t\t"))); // 空列留空（待投行多列空）
+
+    // 区间：交换端、越界钳制、完全越界 → 空
+    QCOMPARE(model.tsvText(1, 0), model.tsvText(0, 1));
+    QCOMPARE(model.tsvText(0, 99).split(QLatin1Char('\n')).size(), 3);
+    QCOMPARE(model.tsvText(5, 9), QString());
+}
+
+QTEST_GUILESS_MAIN(TstModel)
 #include "tst_model.moc"

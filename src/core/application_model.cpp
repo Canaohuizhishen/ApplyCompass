@@ -1,5 +1,7 @@
 #include "core/application_model.h"
 
+#include <algorithm>
+
 #include "core/rule_engine.h"
 
 namespace applycompass {
@@ -164,6 +166,42 @@ bool ApplicationModel::isFollowUpDue(const ApplicationRecord &r, const QDate &to
 {
     return r.status == QStringLiteral("初筛") && r.statusUpdated.isValid()
            && r.statusUpdated.daysTo(today) > 14;
+}
+
+// 选中行 → TSV（Ctrl+C 复制，M3）：含表头；表格的 10 个文本列（不含「内容点」指示列）；
+// 单元格内换行/制表符 → 空格（保证粘进 WPS/Excel 不破坏行列结构）。
+QString ApplicationModel::tsvText(int firstRow, int lastRow) const
+{
+    if (firstRow > lastRow)
+        std::swap(firstRow, lastRow);
+    firstRow = std::max(0, firstRow);
+    lastRow = std::min(lastRow, static_cast<int>(m_records.size()) - 1);
+    if (m_records.isEmpty() || firstRow > lastRow)
+        return QString();
+
+    const auto clean = [](QString s) {
+        s.replace(QLatin1Char('\r'), QLatin1Char(' '));
+        s.replace(QLatin1Char('\n'), QLatin1Char(' '));
+        s.replace(QLatin1Char('\t'), QLatin1Char(' '));
+        return s;
+    };
+
+    QStringList lines;
+    lines << QStringLiteral(
+        "公司\t岗位\t类型\t地区\t投递日期\t渠道\t状态\t状态更新\t简历版本\t链接");
+    for (int r = firstRow; r <= lastRow; ++r) {
+        const ApplicationRecord &rec = m_records.at(r);
+        QStringList cells{clean(rec.company), clean(rec.position), clean(rec.kind),
+                          clean(rec.region),
+                          rec.applyDate.isValid() ? rec.applyDate.toString(Qt::ISODate)
+                                                  : QString(),
+                          clean(rec.channel), clean(rec.status),
+                          rec.statusUpdated.isValid() ? rec.statusUpdated.toString(Qt::ISODate)
+                                                      : QString(),
+                          clean(rec.resumeVersion), clean(rec.link)};
+        lines << cells.join(QLatin1Char('\t'));
+    }
+    return lines.join(QLatin1Char('\n'));
 }
 
 // ---------------- 筛选（§3.5） ----------------

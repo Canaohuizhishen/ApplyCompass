@@ -23,6 +23,7 @@ Item {
         height: Theme.s(20)
         radius: height / 2
         color: root.status !== "" ? Theme.statusColor(root.status) : "transparent"
+        Behavior on color { ColorAnimation { duration: Theme.durFast } }
         border.width: 1
         border.color: root.status !== ""
                       ? Qt.darker(Theme.statusColor(root.status), 1.2)
