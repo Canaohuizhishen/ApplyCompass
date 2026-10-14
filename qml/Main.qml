@@ -23,13 +23,7 @@ ApplicationWindow {
         onActivated: Qt.quit()
     }
 
-    // Ctrl+滚轮缩放（Excel 式；未按 Ctrl 的滚轮不受影响）
-    function zoomWheel(wheel) {
-        if (wheel.angleDelta.y === 0)
-            return
-        App.zoomBySteps(wheel.angleDelta.y > 0 ? 1 : -1)
-        wheel.accepted = true
-    }
+    // Ctrl+滚轮缩放由 ZoomWheelHandler 统一处理（经典滚轮 angleDelta / 触摸板 pixelDelta）
 
     // 状态多选切换（筛选条用）
     function toggleStatusFilter(status) {
@@ -138,10 +132,7 @@ ApplicationWindow {
             }
         }
 
-        WheelHandler {
-            acceptedModifiers: Qt.ControlModifier
-            onWheel: (wheel) => window.zoomWheel(wheel)
-        }
+        ZoomWheelHandler { }
 
         RowLayout {
             anchors.fill: parent
@@ -173,10 +164,8 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
-        WheelHandler {
-            acceptedModifiers: Qt.ControlModifier
-            onWheel: (wheel) => window.zoomWheel(wheel)
-        }
+        // Ctrl+滚轮捕获层分布（每条事件路径上有且只有一个，否则会双跳）：
+        // 工具栏→ ToolBar 内｜筛选条→ filterBar 内｜表头→ tableHeader 内｜表格→ ApplicationTable 内
 
         // 筛选条（§3.5）：搜索 / 状态多选 / 类型 / 地区 / 待跟进 / 清除
         Rectangle {
@@ -185,6 +174,8 @@ ApplicationWindow {
             Layout.fillWidth: true
             implicitHeight: Theme.filterBarHeight
             color: Theme.surface
+
+            ZoomWheelHandler { }
 
             Rectangle {
                 anchors.bottom: parent.bottom
@@ -317,6 +308,8 @@ ApplicationWindow {
                         width: parent.width
                         height: Theme.tableHeaderHeight
                         color: Theme.headBg
+
+                        ZoomWheelHandler { }
 
                         Rectangle {
                             anchors.bottom: parent.bottom

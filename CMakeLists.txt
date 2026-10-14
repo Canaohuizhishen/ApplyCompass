@@ -68,6 +68,7 @@ qt_add_qml_module(applycompass_ui
         qml/AddDialog.qml
         qml/DetailsDrawer.qml
         qml/AppButton.qml
+        qml/ZoomWheelHandler.qml
 )
 
 target_link_libraries(applycompass_ui

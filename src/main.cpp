@@ -19,7 +19,8 @@ int main(int argc, char *argv[])
 
     // 锁定 Fusion 样式：本机 KDE Breeze QQC2 样式与 Qt 6.11 存在不兼容
     //（TextArea 的 MobileTextActionsToolBar 目标类型不匹配），Fusion 在各环境行为一致。
-    // 深浅色打磨（M3）时再评估是否切回系统样式。
+    // 深浅色（M3）：不再依赖系统样式，改用 QPalette 暗色底座随 AppController.darkMode 联动
+    //（覆盖 ComboBox/Menu/TextField/滚动条等非自绘件）。
     QQuickStyle::setStyle(QStringLiteral("Fusion"));
 
     // 显式设定字体：本机 fontconfig 默认 sans-serif 会落到 Droid Sans Fallback，

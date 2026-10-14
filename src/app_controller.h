@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QObject>
+#include <QPalette>
 #include <QStringList>
 #include <QVariantList>
 #include <QVariantMap>
@@ -29,6 +30,7 @@ class AppController : public QObject
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
     Q_PROPERTY(qreal uiZoom READ uiZoom NOTIFY uiZoomChanged)
     Q_PROPERTY(QString lastExportMessage READ lastExportMessage NOTIFY lastExportMessageChanged)
+    Q_PROPERTY(bool darkMode READ darkMode NOTIFY darkModeChanged)
 
 public:
     explicit AppController(QObject *parent = nullptr);
@@ -47,6 +49,14 @@ public:
     qreal uiZoom() const;
     Q_INVOKABLE void setUiZoom(qreal value); // 自动 clamp 到 [0.7, 1.6] 并持久化（10% 对齐）
     Q_INVOKABLE void zoomBySteps(int steps); // 每步 ±10%
+    // 滚轮增量入口：经典滚轮用 angleDelta；Wayland 触摸板/平滑滚动只有 pixelDelta，
+    // 以 40px 为一步累积（防过灵敏）。见 qml/ZoomWheelHandler.qml。
+    Q_INVOKABLE void zoomByWheelDeltas(int angleDeltaY, int pixelDeltaY);
+
+    // ---- 深色模式（M3）：跟随系统 + 环境强制覆盖 ----
+    bool darkMode() const;
+    // -1=跟随系统；0=强制浅色；1=强制深色（会话级；测试与截图用，见 APPLYCOMPASS_FORCE_DARK/LIGHT）
+    Q_INVOKABLE void setDarkModeOverride(int mode);
 
     // ---- 导出（§3.6）----
     QString lastExportMessage() const;
@@ -71,15 +81,26 @@ signals:
     void errorMessageChanged();
     void uiZoomChanged();
     void lastExportMessageChanged();
+    void darkModeChanged();
 
 private:
     void initialize();
 
     static qreal clampedZoom(qreal value);
 
+    void initDarkMode();        // 环境覆盖 + 系统 colorScheme 跟随
+    void recomputeDarkMode();   // 依当前来源计算 darkMode 并联动 QPalette
+    void applyDarkModePalette();
+    static QPalette darkPalette();
+    static QPalette lightPalette();
+
     std::unique_ptr<applycompass::Database> m_db;
     applycompass::ApplicationModel *m_model = nullptr;
     QString m_error;
     qreal m_uiZoom = 1.0;
+    int m_wheelPixelAccum = 0; // 触摸板像素级滚动的累积量（±40px = 一步）
     QString m_lastExportMessage;
+
+    int m_darkModeOverride = -1; // -1=跟随系统；0/1=环境或调用方强制
+    bool m_darkMode = false;
 };

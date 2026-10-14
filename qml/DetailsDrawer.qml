@@ -51,6 +51,8 @@ Drawer {
         anchors.margins: Theme.gapL
         spacing: Theme.gapM
 
+        ZoomWheelHandler { }
+
         RowLayout {
             Layout.fillWidth: true
             Label {

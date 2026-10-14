@@ -28,6 +28,8 @@ Dialog {
         open()
     }
 
+    ZoomWheelHandler { }
+
     RecordForm {
         id: form
         objectName: "addForm"

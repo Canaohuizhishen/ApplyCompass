@@ -5,7 +5,9 @@
 
 #include <QCoreApplication>
 #include <QDesktopServices>
+#include <QGuiApplication>
 #include <QQmlEngine>
+#include <QStyleHints>
 #include <QUrl>
 
 #include "core/app_paths.h"
@@ -16,6 +18,12 @@
 
 namespace {
 AppController *s_instance = nullptr;
+
+// 类型化的 QGuiApplication 取用（QCoreApplication::instance() 只给基类指针）
+QGuiApplication *guiApp()
+{
+    return qobject_cast<QGuiApplication *>(QCoreApplication::instance());
+}
 }
 
 AppController::AppController(QObject *parent)
@@ -37,6 +45,9 @@ AppController *AppController::create(QQmlEngine *engine, QJSEngine *jsEngine)
 
 void AppController::initialize()
 {
+    // 主题模式（M3）：不依赖数据库，最先建立（DB 打不开也要跟随系统深浅色）
+    initDarkMode();
+
     m_db = std::make_unique<applycompass::Database>(applycompass::resolveDataDir());
     QString err;
     if (!m_db->open(&err)) {
@@ -106,6 +117,139 @@ qreal AppController::clampedZoom(qreal value)
     return std::clamp(stepped, 0.7, 1.6);
 }
 
+// ---------------- 深色模式（M3） ----------------
+// 来源优先级：环境强制（APPLYCOMPASS_FORCE_DARK/LIGHT，截图与测试的确定性入口）
+//             ＞ setDarkModeOverride()（运行时测试）
+//             ＞ 系统 QStyleHints.colorScheme（跟随，带变更信号）
+void AppController::initDarkMode()
+{
+    if (qEnvironmentVariableIsSet("APPLYCOMPASS_FORCE_DARK"))
+        m_darkModeOverride = 1;
+    else if (qEnvironmentVariableIsSet("APPLYCOMPASS_FORCE_LIGHT"))
+        m_darkModeOverride = 0;
+
+    if (QGuiApplication *gui = guiApp()) {
+        connect(gui->styleHints(), &QStyleHints::colorSchemeChanged, this,
+                [this]() { recomputeDarkMode(); });
+    }
+    recomputeDarkMode();
+}
+
+bool AppController::darkMode() const
+{
+    return m_darkMode;
+}
+
+void AppController::setDarkModeOverride(int mode)
+{
+    const int m = std::clamp(mode, -1, 1);
+    if (m == m_darkModeOverride)
+        return;
+    m_darkModeOverride = m;
+    recomputeDarkMode();
+}
+
+void AppController::recomputeDarkMode()
+{
+    bool dark = false;
+    if (m_darkModeOverride == 1) {
+        dark = true;
+    } else if (m_darkModeOverride == 0) {
+        dark = false;
+    } else if (QGuiApplication *gui = guiApp()) {
+        dark = gui->styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+    }
+    const bool changed = dark != m_darkMode;
+    m_darkMode = dark;
+    applyDarkModePalette();
+    if (changed)
+        emit darkModeChanged();
+}
+
+void AppController::applyDarkModePalette()
+{
+    // 显式设置双调色板（而非依赖环境基线）：保证 FORCE 覆盖、跟随时切换两向
+    // 都得到与控制令牌一致的外观（本机 KDE 暗色下环境调色板本身偏暗，不可依赖）
+    if (QGuiApplication *gui = guiApp())
+        gui->setPalette(m_darkMode ? darkPalette() : lightPalette());
+}
+
+// Fusion 控件浅色底座调色板（色值与 Theme.qml 浅色令牌对齐）
+QPalette AppController::lightPalette()
+{
+    const QColor text(0x1D, 0x29, 0x39);
+    const QColor border(0xD0, 0xD5, 0xDD);
+    const QColor midlight(0xE4, 0xE7, 0xEC);
+    const QColor disabled(0x98, 0xA2, 0xB3);
+    const QColor highlight(0x25, 0x63, 0xEB);
+
+    QPalette p;
+    p.setColor(QPalette::Window, QColor(0xFF, 0xFF, 0xFF));
+    p.setColor(QPalette::WindowText, text);
+    p.setColor(QPalette::Base, QColor(0xFF, 0xFF, 0xFF));
+    p.setColor(QPalette::AlternateBase, QColor(0xFA, 0xFB, 0xFC));
+    p.setColor(QPalette::Text, text);
+    p.setColor(QPalette::PlaceholderText, disabled);
+    p.setColor(QPalette::Button, QColor(0xF2, 0xF4, 0xF7));
+    p.setColor(QPalette::ButtonText, text);
+    p.setColor(QPalette::BrightText, QColor(0xD9, 0x2D, 0x20));
+    p.setColor(QPalette::Highlight, highlight);
+    p.setColor(QPalette::HighlightedText, Qt::white);
+    p.setColor(QPalette::ToolTipBase, QColor(0xFF, 0xFF, 0xFF));
+    p.setColor(QPalette::ToolTipText, text);
+    p.setColor(QPalette::Link, highlight);
+    p.setColor(QPalette::Light, QColor(0xFF, 0xFF, 0xFF));
+    p.setColor(QPalette::Midlight, midlight);
+    p.setColor(QPalette::Mid, border);
+    p.setColor(QPalette::Dark, disabled);
+    p.setColor(QPalette::Shadow, border);
+    p.setColor(QPalette::Disabled, QPalette::Text, disabled);
+    p.setColor(QPalette::Disabled, QPalette::WindowText, disabled);
+    p.setColor(QPalette::Disabled, QPalette::ButtonText, disabled);
+    p.setColor(QPalette::Disabled, QPalette::HighlightedText, midlight);
+    return p;
+}
+
+// Fusion 控件底座调色板（覆盖 ComboBox/Menu/TextField/滚动条等非自绘件），
+// 色值与 Theme.qml 深色令牌对齐（灰蓝系）
+QPalette AppController::darkPalette()
+{
+    const QColor window(0x1E, 0x22, 0x2A); // 面板
+    const QColor base(0x16, 0x1A, 0x22);   // 输入底
+    const QColor alt(0x1A, 0x1E, 0x27);
+    const QColor text(0xE7, 0xEA, 0xF0);
+    const QColor button(0x2A, 0x2F, 0x3A);
+    const QColor disabled(0x6E, 0x77, 0x87);
+    const QColor highlight(0x3B, 0x82, 0xF6);
+    const QColor placeholder(0x8A, 0x93, 0xA3);
+
+    QPalette p;
+    p.setColor(QPalette::Window, window);
+    p.setColor(QPalette::WindowText, text);
+    p.setColor(QPalette::Base, base);
+    p.setColor(QPalette::AlternateBase, alt);
+    p.setColor(QPalette::Text, text);
+    p.setColor(QPalette::PlaceholderText, placeholder);
+    p.setColor(QPalette::Button, button);
+    p.setColor(QPalette::ButtonText, text);
+    p.setColor(QPalette::BrightText, QColor(0xFF, 0x6B, 0x6B));
+    p.setColor(QPalette::Highlight, highlight);
+    p.setColor(QPalette::HighlightedText, Qt::white);
+    p.setColor(QPalette::ToolTipBase, button);
+    p.setColor(QPalette::ToolTipText, text);
+    p.setColor(QPalette::Link, highlight);
+    p.setColor(QPalette::Light, QColor(0x4A, 0x52, 0x62));
+    p.setColor(QPalette::Midlight, QColor(0x32, 0x39, 0x46));
+    p.setColor(QPalette::Mid, QColor(0x3A, 0x41, 0x50));
+    p.setColor(QPalette::Dark, QColor(0x20, 0x25, 0x2F));
+    p.setColor(QPalette::Shadow, QColor(0x0D, 0x10, 0x15));
+    p.setColor(QPalette::Disabled, QPalette::Text, disabled);
+    p.setColor(QPalette::Disabled, QPalette::WindowText, disabled);
+    p.setColor(QPalette::Disabled, QPalette::ButtonText, disabled);
+    p.setColor(QPalette::Disabled, QPalette::HighlightedText, disabled);
+    return p;
+}
+
 qreal AppController::uiZoom() const
 {
     return m_uiZoom;
@@ -125,6 +269,31 @@ void AppController::setUiZoom(qreal value)
 void AppController::zoomBySteps(int steps)
 {
     setUiZoom(m_uiZoom + steps * 0.1);
+}
+
+void AppController::zoomByWheelDeltas(int angleDeltaY, int pixelDeltaY)
+{
+    // 经典滚轮：一个刻度一步
+    if (angleDeltaY != 0) {
+        zoomBySteps(angleDeltaY > 0 ? 1 : -1);
+        m_wheelPixelAccum = 0;
+        return;
+    }
+    // 触摸板/平滑滚动（Wayland 常只有 pixelDelta）：累积 40px 一步
+    if (pixelDeltaY == 0)
+        return;
+    m_wheelPixelAccum += pixelDeltaY;
+    int steps = 0;
+    while (m_wheelPixelAccum >= 40) {
+        ++steps;
+        m_wheelPixelAccum -= 40;
+    }
+    while (m_wheelPixelAccum <= -40) {
+        --steps;
+        m_wheelPixelAccum += 40;
+    }
+    if (steps != 0)
+        zoomBySteps(steps);
 }
 
 QString AppController::lastExportMessage() const

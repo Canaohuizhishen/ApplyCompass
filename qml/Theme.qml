@@ -7,52 +7,58 @@ import ApplyCompass
 // 全部尺寸与字号经 zoom（= App.uiZoom，0.7–1.6）缩放 → Ctrl+滚轮整体缩放。
 // 9 状态语义色 = 旧表条件格式实测值（2026-10-14，勿动；tst_ui 有锚定回归）。
 QtObject {
+    // ---------------- 主题模式（M3） ----------------
+    // 跟随系统深浅色（App.darkMode，来源见 AppController）；
+    // 9 个状态语义色在两模式下保持一致（旧表实测值，勿动；tst_ui 有锚定回归）。
+    readonly property bool dark: App.darkMode
+
     // ---------------- 缩放 ----------------
     readonly property real zoom: App.uiZoom
     function s(v) { return Math.round(v * zoom) }                 // 尺寸
     function fs(v) { return Math.max(9, Math.round(v * zoom)) }   // 字号（pixelSize 为 int）
 
     // ---------------- 颜色：基础 ----------------
-    readonly property color bg: "#F5F6F8"          // 窗口底
-    readonly property color surface: "#FFFFFF"     // 表面（表格/卡片）
-    readonly property color border: "#E4E7EC"
-    readonly property color separator: "#F0F1F3"   // 发丝分隔线
-    readonly property color textPrimary: "#1D2939"
-    readonly property color textSecondary: "#667085"
-    readonly property color textTertiary: "#98A2B3"
+    readonly property color bg: dark ? "#11151C" : "#F5F6F8"          // 窗口底
+    readonly property color surface: dark ? "#171B23" : "#FFFFFF"      // 表面（表格/卡片）
+    readonly property color border: dark ? "#2A303B" : "#E4E7EC"
+    readonly property color separator: dark ? "#20252F" : "#F0F1F3"    // 发丝分隔线
+    readonly property color textPrimary: dark ? "#E7EAF0" : "#1D2939"
+    readonly property color textSecondary: dark ? "#A3ABB9" : "#667085"
+    readonly property color textTertiary: dark ? "#6F7A8C" : "#98A2B3"
 
     // ---------------- 颜色：主色 / 语义 ----------------
-    readonly property color primary: "#2563EB"
-    readonly property color primaryHover: "#1D4ED8"
-    readonly property color primaryPressed: "#1E40AF"
+    readonly property color primary: dark ? "#3B82F6" : "#2563EB"
+    readonly property color primaryHover: dark ? "#5B97F8" : "#1D4ED8"
+    readonly property color primaryPressed: dark ? "#2F6FE0" : "#1E40AF"
     readonly property color textOnPrimary: "#FFFFFF"   // 注意：勿用 on 前缀命名（QML 会当信号处理器解析）
-    readonly property color primarySoft: "#EFF4FF"
-    readonly property color danger: "#D92D20"
-    readonly property color dangerSoft: "#FEF3F2"
-    readonly property color ghostHover: "#F2F4F7"
+    readonly property color primarySoft: dark ? "#1D2A44" : "#EFF4FF"
+    readonly property color danger: dark ? "#F97066" : "#D92D20"
+    readonly property color dangerSoft: dark ? "#3B2220" : "#FEF3F2"
+    readonly property color ghostHover: dark ? "#232935" : "#F2F4F7"
 
     // ---------------- 颜色：表格 ----------------
-    readonly property color rowHoverColor: "#F0F5FF"
-    readonly property color rowAltColor: "#FAFBFC"      // 淡斑马（保留；restyle 视效果取舍）
-    readonly property color headBg: "#FFFFFF"
-    readonly property color sectionBg: "#F9FAFB"
-    readonly property color scrollThumb: "#D0D5DD"
-    readonly property color linkColor: "#2563EB"
-    readonly property color linkIdleColor: "#D0D5DD"
-    readonly property color dotOnColor: "#8FB0F0"
-    readonly property color dotOffColor: "#E4E7EC"
+    readonly property color rowHoverColor: dark ? "#1D2531" : "#F0F5FF"  // 旧悬停底（M3 起行悬停改用 rowHoverOverlay 叠加层）
+    readonly property color rowHoverOverlay: dark ? "#14FFFFFF" : "#142563EB" // 行悬停/选中叠加层（主色 ≈8%）
+    readonly property color rowAltColor: dark ? "#1A1F28" : "#FAFBFC"  // 淡斑马（保留；restyle 视效果取舍）
+    readonly property color headBg: dark ? "#171B23" : "#FFFFFF"
+    readonly property color sectionBg: dark ? "#1B202A" : "#F9FAFB"
+    readonly property color scrollThumb: dark ? "#3A4150" : "#D0D5DD"
+    readonly property color linkColor: dark ? "#6D9BF8" : "#2563EB"
+    readonly property color linkIdleColor: dark ? "#3A4150" : "#D0D5DD"
+    readonly property color dotOnColor: dark ? "#5B82D6" : "#8FB0F0"
+    readonly property color dotOffColor: dark ? "#2E3542" : "#E4E7EC"
 
     // ---------------- 颜色：待跟进 ----------------
-    readonly property color followUpBg: "#FFF7E6"       // 整行浅黄底（§2.3）
-    readonly property color followUpAccent: "#F79009"
-    readonly property color followUpText: "#B54708"
+    readonly property color followUpBg: dark ? "#3A2E12" : "#FFF7E6"       // 整行浅黄底（§2.3）
+    readonly property color followUpAccent: dark ? "#FDB022" : "#F79009"
+    readonly property color followUpText: dark ? "#FDB022" : "#B54708"
 
     // ---------------- 颜色：类型徽标 ----------------
-    readonly property color kindInternBg: "#E6F6F1"
-    readonly property color kindInternBorder: "#8ED0BE"
-    readonly property color kindFormalBg: "#EEF1F8"
-    readonly property color kindFormalBorder: "#B8C2DB"
-    readonly property color kindText: "#475467"
+    readonly property color kindInternBg: dark ? "#1C332D" : "#E6F6F1"
+    readonly property color kindInternBorder: dark ? "#2F6A58" : "#8ED0BE"
+    readonly property color kindFormalBg: dark ? "#232B3B" : "#EEF1F8"
+    readonly property color kindFormalBorder: dark ? "#3A4763" : "#B8C2DB"
+    readonly property color kindText: dark ? "#C3CAD6" : "#475467"
 
     // ---------------- 状态语义色（旧表实测，勿动） ----------------
     readonly property var statusColors: ({
@@ -69,6 +75,22 @@ QtObject {
 
     function statusColor(status) {
         return statusColors[status] !== undefined ? statusColors[status] : "transparent"
+    }
+
+    // ---------------- 行状态配色（M3：整行变色） ----------------
+    // 状态非空 → 整行底色 = 该状态色。浅色 = 旧表纯色（与导出的「状态整行配色」一致）；
+    // 深色 = 状态色以 ~16% 混入暗表面（保持色相语义、避免浅色大块刺眼）。
+    // 注意：statusColors 的 9 个值本身保持不变（旧表实测，测试锚定）。
+    function rowStatusColor(status) {
+        const hex = statusColors[status]
+        if (hex === undefined)
+            return "transparent"
+        if (!dark)
+            return hex
+        const r = parseInt(hex.substring(1, 3), 16) / 255.0
+        const g = parseInt(hex.substring(3, 5), 16) / 255.0
+        const b = parseInt(hex.substring(5, 7), 16) / 255.0
+        return Qt.tint(surface, Qt.rgba(r, g, b, 0.16))
     }
 
     // ---------------- 尺寸（基准 × zoom） ----------------

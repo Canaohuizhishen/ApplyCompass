@@ -5,6 +5,11 @@ import ApplyCompass
 
 // 表格数据行（自绘委托，设计文档 §6）。单击行 = 唤出详情（§2.2）。
 // 状态块 / 链接图标在行之上，各自消费点击。
+//
+// 行底色（M3 整行变色）：待跟进（§2.3）＞ 状态色 ＞ 待投白。
+//   状态非空 → 整行 = 状态色（浅色=旧表纯色，与导出一致；深色=低透明度合成色，见 Theme.rowStatusColor）。
+//   悬停/键盘选中不再整行替换色（否则丢掉状态色、与待跟进打架）：
+//   悬停 = 主色低透明度叠加层；键盘选中 = 主色内描边 + 同叠加层。
 Item {
     id: root
     // 逐行唯一（rowDelegate_<id>）：测试与调试可直接定位
@@ -18,14 +23,18 @@ Item {
     readonly property string companyText: model.company
     readonly property bool selected: ListView.view && ListView.view.currentId === model.id
 
+    // 行底色（优先级见文件头注释）
+    readonly property color rowBaseColor: model.followUpDue ? Theme.followUpBg
+                                        : model.status !== "" ? Theme.rowStatusColor(model.status)
+                                        : Theme.surface
+
     signal rowClicked(int recordId)
 
     Rectangle {
+        id: rowBackground
+        objectName: "rowBackground"
         anchors.fill: parent
-        color: selected ? Theme.primarySoft                    // 键盘选中
-              : rowMouse.containsMouse ? Theme.rowHoverColor
-              : model.followUpDue ? Theme.followUpBg          // 待跟进浅黄（§2.3）
-              : Theme.surface
+        color: root.rowBaseColor
     }
     // 待跟进左缘琥珀条
     Rectangle {
@@ -35,6 +44,22 @@ Item {
         width: Theme.s(3)
         color: Theme.followUpAccent
         visible: model.followUpDue
+    }
+    // 悬停 / 键盘选中叠加层（纯色行上不做整行替换色）
+    Rectangle {
+        objectName: "rowHoverOverlay"
+        anchors.fill: parent
+        color: Theme.rowHoverOverlay
+        visible: rowMouse.containsMouse || root.selected
+    }
+    // 键盘选中：主色内描边（在任意底色上都清晰）
+    Rectangle {
+        objectName: "rowSelectedBorder"
+        anchors.fill: parent
+        color: "transparent"
+        border.width: 1
+        border.color: Theme.primary
+        visible: root.selected
     }
     // 发丝分隔线
     Rectangle {

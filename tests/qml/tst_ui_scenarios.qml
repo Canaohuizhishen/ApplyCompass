@@ -274,6 +274,47 @@ TestCase {
         compare(Theme.statusColor(""), "transparent")
     }
 
+    // ---- 整行状态配色（M3）：浅色=旧表纯色；深色=合成色（非纯色）；待投=白 ----
+    function test_rowStatusColors() {
+        App.setDarkModeOverride(0) // 锁定浅色（测试环境 colorScheme 不定，显式确定）
+
+        const idGray = App.addRecord({ "company": "灰行", "position": "p", "status": "初筛", "applyDate": "2026-10-01" })
+        const idOffer = App.addRecord({ "company": "绿行", "position": "p", "status": "Offer", "applyDate": "2026-10-01" })
+        const idPending = App.addRecord({ "company": "白行", "position": "p" })
+        verify(idGray > 0 && idOffer > 0 && idPending > 0)
+
+        const rowGray = rowItem(idGray)
+        const rowOffer = rowItem(idOffer)
+        const rowPending = rowItem(idPending)
+        verify(rowGray !== null && rowOffer !== null && rowPending !== null)
+
+        // 浅色：整行 = 旧表条件格式实测色（与导出 tst_export 同一基准）
+        compare(findChild(rowGray, "rowBackground").color.toString().toUpperCase(), "#E7E6E6")
+        compare(findChild(rowOffer, "rowBackground").color.toString().toUpperCase(), "#C6EFCE")
+        // 待投（状态空）：白 surface，不染色
+        compare(findChild(rowPending, "rowBackground").color.toString().toUpperCase(),
+                Theme.surface.toString().toUpperCase())
+
+        // 深色：同一行切换为低透明度合成色（≠ 旧表纯色、≠ 暗表面），绑定即时生效
+        App.setDarkModeOverride(1)
+        tryVerify(function() {
+            const c = findChild(rowGray, "rowBackground").color.toString().toUpperCase()
+            return c !== "#E7E6E6" && c !== "#171B23"
+        })
+
+        // 键盘选中：主色内描边 + 叠加层可见（纯色行上仍可辨）
+        const table = findChild(win.contentItem, "applicationTable")
+        table.currentId = idGray
+        tryVerify(function() {
+            return findChild(rowGray, "rowSelectedBorder").visible
+                   && findChild(rowGray, "rowHoverOverlay").visible
+        })
+
+        // 恢复（不影响其余用例）：取消选中 + 回跟随系统
+        table.currentId = -1
+        App.setDarkModeOverride(-1)
+    }
+
     // ---- Ctrl+滚轮缩放 ----
     function test_zoomByCtrlWheelAndClamp() {
         App.setUiZoom(1.0)
@@ -433,5 +474,117 @@ TestCase {
         compare(res.ok, true)
         verify(res.xlsx !== "")
         verify(res.csv !== "")
+    }
+
+    // ---- 滚轮修饰键组合（真机回归锚点）----
+    // 背景：acceptedModifiers 是"精确等于"语义（qquickpointerdevicehandler.cpp），
+    // NumLock 等附带修饰位会把 Ctrl+滚轮整体拒绝（真机症状：按不按 Ctrl 都只滚动）。
+    // 修复 = ZoomWheelHandler 改用配置（TouchPad 设备 + blocking:false）+ JS 包含判断。
+    function test_zoomModifierCombos() {
+        App.setUiZoom(1.0)
+        const table = findChild(win.contentItem, "applicationTable")
+        verify(table !== null)
+        const cx = table.width / 2
+        const cy = table.height / 2
+
+        // Ctrl|Keypad（NumLock 打开场景）：修复前整体被拒
+        mouseWheel(table, cx, cy, 0, 120, Qt.NoButton,
+                   Qt.ControlModifier | Qt.KeypadModifier)
+        tryCompare(App, "uiZoom", 1.1)
+        // Ctrl|Shift：包含语义同样缩放
+        mouseWheel(table, cx, cy, 0, 120, Qt.NoButton,
+                   Qt.ControlModifier | Qt.ShiftModifier)
+        tryCompare(App, "uiZoom", 1.2)
+        // 精确 Ctrl 反向缩回
+        mouseWheel(table, cx, cy, 0, -120, Qt.NoButton, Qt.ControlModifier)
+        tryCompare(App, "uiZoom", 1.1)
+
+        // 未按 Ctrl：不缩放，且回退为列表滚动（blocking:false 锚点）
+        App.setUiZoom(1.0)
+        for (let i = 0; i < 25; ++i)
+            App.addRecord({ "company": "滚轮" + i, "position": "p" })
+        wait(150)
+        const list = findChild(win.contentItem, "applicationTable")
+        list.contentY = 0
+        wait(50)
+        mouseWheel(list, cx, cy, 0, -120, Qt.NoButton, Qt.NoModifier)
+        tryVerify(function() { return list.contentY > 1 }, 2000)
+        compare(App.uiZoom, 1.0)
+
+        App.setUiZoom(1.0)
+    }
+
+    // ---- 可滚动列表中的 Ctrl+滚轮（真机核心场景：列表能滚时也必须缩放）----
+    // 背景：Flickable 能滚动时会先消费滚轮，祖先层 handler 拿不到事件，
+    // 之前所有用例的列表都不可滚动（内容太短），因此测不到此缺陷。
+    function test_zoomWithScrollableList() {
+        App.setUiZoom(1.0)
+        for (let i = 0; i < 60; ++i)
+            App.addRecord({ "company": "缩放大列表" + i, "position": "p" })
+        wait(200)
+
+        const table = findChild(win.contentItem, "applicationTable")
+        verify(table !== null)
+        verify(table.contentHeight > table.height + 50) // 确保确实可滚动
+
+        table.contentY = Math.round((table.contentHeight - table.height) / 2) // 列表中部
+        wait(80)
+        const y0 = table.contentY
+        const cx = table.width / 2
+        const cy = table.height / 2
+
+        // 中部 + Ctrl+滚轮拉近：必须缩放，且列表不被滚动
+        mouseWheel(table, cx, cy, 0, 120, Qt.NoButton, Qt.ControlModifier)
+        tryCompare(App, "uiZoom", 1.1)
+        compare(Math.abs(table.contentY - y0) < 1, true)
+
+        // 中部 + Ctrl+Keypad（NumLock）同样缩放（组合锚点）
+        mouseWheel(table, cx, cy, 0, 120, Qt.NoButton,
+                   Qt.ControlModifier | Qt.KeypadModifier)
+        tryCompare(App, "uiZoom", 1.2)
+
+        // 普通滚轮：不缩放、照常滚动（捕获层放行）
+        App.setUiZoom(1.0)
+        const y1 = table.contentY
+        mouseWheel(table, cx, cy, 0, -120, Qt.NoButton, Qt.NoModifier)
+        tryVerify(function() { return table.contentY > y1 + 1 }, 2000)
+        compare(App.uiZoom, 1.0)
+    }
+
+    // ---- 滚轮增量处理：经典 angle / 触摸板 pixel 累积（Wayland 常见 angleDelta=0） ----
+    function test_zoomWheelDeltas() {
+        App.setUiZoom(1.0)
+
+        // 经典滚轮：一个刻度一步
+        App.zoomByWheelDeltas(120, 0)
+        tryCompare(App, "uiZoom", 1.1)
+        App.zoomByWheelDeltas(-120, 0)
+        tryCompare(App, "uiZoom", 1.0)
+
+        // 触摸板像素累积：40px 一步
+        App.zoomByWheelDeltas(0, 15)
+        compare(App.uiZoom, 1.0)
+        App.zoomByWheelDeltas(0, 15)
+        compare(App.uiZoom, 1.0)
+        App.zoomByWheelDeltas(0, 15) // 累积 45 → 一步（余 5）
+        tryCompare(App, "uiZoom", 1.1)
+        App.zoomByWheelDeltas(0, 35) // 5+35=40 → 一步
+        tryCompare(App, "uiZoom", 1.2)
+
+        // 反向累积
+        App.zoomByWheelDeltas(0, -20)
+        compare(App.uiZoom, 1.2)
+        App.zoomByWheelDeltas(0, -25) // 累积 -45 → 一步
+        tryCompare(App, "uiZoom", 1.1)
+        App.zoomByWheelDeltas(0, 30) // 残留 -5+30=25，不步进
+        compare(App.uiZoom, 1.1)
+
+        // 经典滚轮重置像素累積（防混用残留）
+        App.zoomByWheelDeltas(120, 0)
+        tryCompare(App, "uiZoom", 1.2)
+        App.zoomByWheelDeltas(0, 39) // 已重置则 39<40 不动
+        compare(App.uiZoom, 1.2)
+
+        App.setUiZoom(1.0)
     }
 }

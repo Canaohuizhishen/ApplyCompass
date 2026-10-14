@@ -17,6 +17,13 @@ ListView {
 
     signal rowClicked(int recordId)
 
+    // Ctrl+滚轮缩放捕获层（真机回归修复 2）：
+    // 关键机制——Flickable 能滚动时会先消费滚轮事件，挂在祖先层的 WheelHandler
+    // 拿不到（真机症状：只有列表滚到顶/底边缘时缩放才生效）。必须把捕获层放在
+    // 列表自身（与 Flickable 同级，handler 先于其自带滚动处理）；非 Ctrl 事件
+    // return 放行（blocking:false），由列表继续滚动。
+    ZoomWheelHandler { }
+
     function moveSelection(delta) {
         if (count === 0)
             return
