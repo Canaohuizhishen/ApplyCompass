@@ -60,14 +60,14 @@ ColumnLayout {
         rowSpacing: Theme.gapS
 
         FieldLabel { text: qsTr("公司 *") }
-        TextField {
+        AppTextField {
             id: companyField
             objectName: "companyField"
             Layout.fillWidth: true
             placeholderText: qsTr("公司名称")
         }
         FieldLabel { text: qsTr("岗位名称 *") }
-        TextField {
+        AppTextField {
             id: positionField
             objectName: "positionField"
             Layout.fillWidth: true
@@ -75,7 +75,7 @@ ColumnLayout {
         }
 
         FieldLabel { text: qsTr("类型") }
-        ComboBox {
+        AppComboBox {
             id: kindCombo
             objectName: "kindCombo"
             Layout.fillWidth: true
@@ -83,7 +83,7 @@ ColumnLayout {
             currentIndex: 1
         }
         FieldLabel { text: qsTr("地区") }
-        TextField {
+        AppTextField {
             id: regionField
             objectName: "regionField"
             Layout.fillWidth: true
@@ -91,7 +91,7 @@ ColumnLayout {
         }
 
         FieldLabel { text: qsTr("渠道") }
-        ComboBox {
+        AppComboBox {
             id: channelCombo
             objectName: "channelCombo"
             Layout.fillWidth: true
@@ -99,7 +99,7 @@ ColumnLayout {
             currentIndex: -1
         }
         FieldLabel { text: qsTr("简历版本") }
-        ComboBox {
+        AppComboBox {
             id: resumeCombo
             objectName: "resumeCombo"
             Layout.fillWidth: true
@@ -108,16 +108,16 @@ ColumnLayout {
         }
 
         FieldLabel { text: qsTr("投递日期") }
-        TextField {
+        AppTextField {
             id: applyDateField
             objectName: "applyDateField"
             Layout.fillWidth: true
             placeholderText: "yyyy-MM-dd"
-            color: form.dateValid ? palette.text : Theme.danger
+            color: form.dateValid ? Theme.textPrimary : Theme.danger
             inputMethodHints: Qt.ImhDate
         }
         FieldLabel { text: qsTr("跟进链接") }
-        TextField {
+        AppTextField {
             id: linkField
             objectName: "linkField"
             Layout.fillWidth: true
@@ -125,7 +125,7 @@ ColumnLayout {
         }
 
         FieldLabel { text: qsTr("状态") }
-        ComboBox {
+        AppComboBox {
             id: statusCombo
             objectName: "statusCombo"
             Layout.fillWidth: true
@@ -136,7 +136,7 @@ ColumnLayout {
             text: qsTr("薪资")
             visible: form.offered
         }
-        TextField {
+        AppTextField {
             id: salaryField
             objectName: "salaryField"
             Layout.fillWidth: true
@@ -150,7 +150,7 @@ ColumnLayout {
     ScrollView {
         Layout.fillWidth: true
         implicitHeight: Theme.s(76)
-        TextArea {
+        AppTextArea {
             id: dutiesArea
             objectName: "dutiesArea"
             wrapMode: TextArea.Wrap
@@ -162,7 +162,7 @@ ColumnLayout {
     ScrollView {
         Layout.fillWidth: true
         implicitHeight: Theme.s(76)
-        TextArea {
+        AppTextArea {
             id: requirementsArea
             objectName: "requirementsArea"
             wrapMode: TextArea.Wrap
@@ -174,7 +174,7 @@ ColumnLayout {
     ScrollView {
         Layout.fillWidth: true
         implicitHeight: Theme.s(56)
-        TextArea {
+        AppTextArea {
             id: notesArea
             objectName: "notesArea"
             wrapMode: TextArea.Wrap

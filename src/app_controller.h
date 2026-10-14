@@ -31,6 +31,7 @@ class AppController : public QObject
     Q_PROPERTY(qreal uiZoom READ uiZoom NOTIFY uiZoomChanged)
     Q_PROPERTY(QString lastExportMessage READ lastExportMessage NOTIFY lastExportMessageChanged)
     Q_PROPERTY(bool darkMode READ darkMode NOTIFY darkModeChanged)
+    Q_PROPERTY(QString themePreference READ themePreference NOTIFY themePreferenceChanged)
 
 public:
     explicit AppController(QObject *parent = nullptr);
@@ -58,10 +59,22 @@ public:
     // -1=跟随系统；0=强制浅色；1=强制深色（会话级；测试与截图用，见 APPLYCOMPASS_FORCE_DARK/LIGHT）
     Q_INVOKABLE void setDarkModeOverride(int mode);
 
+    // ---- 主题偏好（M4 设置面板）：system/light/dark ----
+    // 优先级：APPLYCOMPASS_FORCE_* 环境 ＞ setDarkModeOverride（测试钩子）＞ 偏好 ＞ 系统 colorScheme
+    QString themePreference() const;
+    Q_INVOKABLE void setThemePreference(const QString &pref);
+
+    // ---- 数据维护（M4 设置面板） ----
+    Q_INVOKABLE bool openDataFolder() const;
+    Q_INVOKABLE bool openBackupsFolder() const;
+    Q_INVOKABLE bool backupNow();                // 立即备份（并轮转）+ toast 反馈
+    Q_INVOKABLE bool openToastTarget() const;    // toast 点击 → 打开最近消息关联的目录
+
     // ---- 窗口布局记忆（M3，§10）：大小/最大化可靠；位置 Wayland 下尽力而为 ----
     // 返回 {x,y,width,height,maximized}；从未保存过 → 空 map。含屏幕越界校验（防丢窗）。
     Q_INVOKABLE QVariantMap loadWindowState() const;
     Q_INVOKABLE void saveWindowState(int x, int y, int width, int height, bool maximized);
+
     // ---- 导出（§3.6）----
     QString lastExportMessage() const;
     Q_INVOKABLE QVariantMap exportAll();      // 全量导出 xlsx+csv，返回 {ok,xlsx,csv,error,warning}
@@ -87,6 +100,7 @@ signals:
     void uiZoomChanged();
     void lastExportMessageChanged();
     void darkModeChanged();
+    void themePreferenceChanged();
 
 private:
     void initialize();
@@ -105,7 +119,10 @@ private:
     qreal m_uiZoom = 1.0;
     int m_wheelPixelAccum = 0; // 触摸板像素级滚动的累积量（±40px = 一步）
     QString m_lastExportMessage;
+    enum class ToastTarget { Export, Backups }; // toast 点击打开的目录
+    ToastTarget m_toastTarget = ToastTarget::Export;
 
     int m_darkModeOverride = -1; // -1=跟随系统；0/1=环境或调用方强制
     bool m_darkMode = false;
+    QString m_themePreference = QStringLiteral("system"); // system/light/dark（M4 设置面板）
 };

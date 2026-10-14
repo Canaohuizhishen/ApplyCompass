@@ -76,7 +76,7 @@ ApplicationWindow {
         const it = window.activeFocusItem
         return !!(it && it.cursorPosition !== undefined)
     }
-    readonly property bool popupOpen: addDialog.opened || drawer.opened
+    readonly property bool popupOpen: addDialog.opened || drawer.opened || settingsDialog.opened
 
     // 1–9：为选中行快速改状态（§3.7）
     function quickStatus(digit) {
@@ -194,6 +194,13 @@ ApplicationWindow {
             Item { Layout.fillWidth: true }
 
             StatBar { }
+
+            AppButton {
+                objectName: "settingsButton"
+                variant: "ghost"
+                icon.source: "icons/gear.svg"
+                onClicked: settingsDialog.open()
+            }
         }
     }
 
@@ -243,7 +250,7 @@ ApplicationWindow {
                 anchors.rightMargin: Theme.gapM
                 spacing: Theme.gapS
 
-                TextField {
+                AppTextField {
                     id: searchField
                     objectName: "searchField"
                     Layout.preferredWidth: Theme.s(260)
@@ -251,19 +258,20 @@ ApplicationWindow {
                     onTextChanged: App.model.searchText = text
                 }
 
-                Button {
+                AppButton {
                     id: statusFilterButton
                     objectName: "statusFilterButton"
+                    variant: "soft"
                     text: App.model.statusFilter.length === 0
                           ? qsTr("状态")
                           : qsTr("状态 · %1").arg(App.model.statusFilter.length)
                     onClicked: statusFilterMenu.popup()
 
-                    Menu {
+                    AppMenu {
                         id: statusFilterMenu
                         Instantiator {
                             model: App.statusOptions
-                            delegate: MenuItem {
+                            delegate: AppMenuItem {
                                 required property string modelData
                                 text: modelData
                                 checkable: true
@@ -276,7 +284,7 @@ ApplicationWindow {
                     }
                 }
 
-                ComboBox {
+                AppComboBox {
                     id: kindCombo
                     objectName: "kindFilterCombo"
                     model: [qsTr("类型：全部"), qsTr("实习"), qsTr("正式")]
@@ -284,7 +292,7 @@ ApplicationWindow {
                                 : currentIndex === 2 ? "正式" : ""
                 }
 
-                ComboBox {
+                AppComboBox {
                     id: regionCombo
                     objectName: "regionFilterCombo"
                     property var regionModel: [qsTr("地区：全部")].concat(App.model.regionOptions)
@@ -292,18 +300,18 @@ ApplicationWindow {
                     onActivated: App.model.regionFilter = currentIndex === 0 ? "" : regionModel[currentIndex]
                 }
 
-                Button {
+                AppButton {
                     id: followUpToggle
                     objectName: "followUpToggle"
+                    variant: "soft"
                     checkable: true
                     text: qsTr("待跟进")
-                    icon.source: "icons/warn.svg"
-                    icon.color: Theme.followUpText
                     onToggled: App.model.followUpOnly = checked
                 }
 
-                Button {
+                AppButton {
                     objectName: "clearFiltersButton"
+                    variant: "soft"
                     text: qsTr("清除筛选")
                     visible: App.model.filtersActive
                     onClicked: App.model.clearFilters()
@@ -388,7 +396,7 @@ ApplicationWindow {
                     }
                 }
 
-                ScrollBar.horizontal: ScrollBar {
+                ScrollBar.horizontal: AppScrollBar {
                     policy: ScrollBar.AsNeeded
                 }
             }
@@ -425,7 +433,7 @@ ApplicationWindow {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
             onClicked: {
-                App.openExportFolder()
+                App.openToastTarget()
                 App.clearExportMessage()
             }
         }
@@ -437,6 +445,8 @@ ApplicationWindow {
     }
 
     AddDialog { id: addDialog }
+
+    SettingsDialog { id: settingsDialog }
 
     DetailsDrawer { id: drawer }
 }

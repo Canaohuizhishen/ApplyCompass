@@ -53,6 +53,11 @@ QtObject {
     readonly property color dotOnColor: dark ? "#5B82D6" : "#8FB0F0"
     readonly property color dotOffColor: dark ? "#2E3542" : "#E4E7EC"
 
+    // ---------------- 颜色：控件（M4 圆角皮肤） ----------------
+    readonly property color fieldBg: dark ? "#161A22" : "#FFFFFF"      // 输入/下拉底色
+    readonly property color softBg: dark ? "#232935" : "#F2F4F7"       // 柔和按钮常态
+    readonly property color softBgHover: dark ? "#2E3542" : "#E4E7EC"  // 柔和按钮悬停/按下
+
     // ---------------- 颜色：待跟进 ----------------
     readonly property color followUpBg: dark ? "#3A2E12" : "#FFF7E6"       // 整行浅黄底（§2.3）
     readonly property color followUpAccent: dark ? "#FDB022" : "#F79009"

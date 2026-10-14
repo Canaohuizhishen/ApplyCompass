@@ -6,6 +6,7 @@
 #include <QClipboard>
 #include <QCoreApplication>
 #include <QDesktopServices>
+#include <QDir>
 #include <QGuiApplication>
 #include <QQmlEngine>
 #include <QScreen>
@@ -61,6 +62,11 @@ void AppController::initialize()
 
     // 恢复缩放设置（Ctrl+滚轮）
     m_uiZoom = clampedZoom(m_db->setting(QStringLiteral("uiZoom"), QStringLiteral("1.0")).toDouble());
+
+    // 恢复主题偏好（M4 设置面板；system/light/dark，非法值回退 system）
+    const QString theme = m_db->setting(QStringLiteral("theme"), QStringLiteral("system"));
+    m_themePreference = (theme == QLatin1String("light") || theme == QLatin1String("dark"))
+                            ? theme : QStringLiteral("system");
 
     // 每日首启备份 + 退出备份（§3.8）；空库不备份，避免堆积垃圾文件
     if (!m_db->hasBackupToday() && m_db->recordCount() > 0) {
@@ -151,15 +157,37 @@ void AppController::setDarkModeOverride(int mode)
     recomputeDarkMode();
 }
 
+QString AppController::themePreference() const
+{
+    return m_themePreference;
+}
+
+void AppController::setThemePreference(const QString &pref)
+{
+    const QString p = (pref == QLatin1String("light") || pref == QLatin1String("dark"))
+                          ? pref : QStringLiteral("system");
+    if (p == m_themePreference)
+        return;
+    m_themePreference = p;
+    if (m_db && m_db->isOpen())
+        m_db->setSetting(QStringLiteral("theme"), p);
+    recomputeDarkMode();
+    emit themePreferenceChanged();
+}
+
 void AppController::recomputeDarkMode()
 {
     bool dark = false;
     if (m_darkModeOverride == 1) {
-        dark = true;
+        dark = true;                              // 测试钩子（优先级最高）
     } else if (m_darkModeOverride == 0) {
         dark = false;
+    } else if (m_themePreference == QLatin1String("dark")) {
+        dark = true;                              // 用户偏好（M4 设置面板）
+    } else if (m_themePreference == QLatin1String("light")) {
+        dark = false;
     } else if (QGuiApplication *gui = guiApp()) {
-        dark = gui->styleHints()->colorScheme() == Qt::ColorScheme::Dark;
+        dark = gui->styleHints()->colorScheme() == Qt::ColorScheme::Dark; // 跟随系统
     }
     const bool changed = dark != m_darkMode;
     m_darkMode = dark;
@@ -362,6 +390,7 @@ void AppController::saveWindowState(int x, int y, int width, int height, bool ma
 QVariantMap AppController::exportAll()
 {
     QVariantMap res;
+    m_toastTarget = ToastTarget::Export; // 导出消息点击 → 导出目录
     if (!m_db) {
         m_lastExportMessage = tr("导出失败：数据库未打开");
         emit lastExportMessageChanged();
@@ -397,6 +426,36 @@ void AppController::clearExportMessage()
 bool AppController::openExportFolder() const
 {
     return QDesktopServices::openUrl(QUrl::fromLocalFile(applycompass::resolveExportDir()));
+}
+
+bool AppController::openDataFolder() const
+{
+    return QDesktopServices::openUrl(QUrl::fromLocalFile(applycompass::resolveDataDir()));
+}
+
+bool AppController::openBackupsFolder() const
+{
+    return QDesktopServices::openUrl(
+        QUrl::fromLocalFile(QDir(applycompass::resolveDataDir()).filePath(QStringLiteral("backups"))));
+}
+
+bool AppController::backupNow()
+{
+    if (!m_db || !m_db->isOpen())
+        return false;
+    const QString path = m_db->backupNow();
+    m_db->rotateBackups(14);
+    m_toastTarget = ToastTarget::Backups; // 备份消息点击 → 备份目录
+    m_lastExportMessage = path.isEmpty() ? tr("备份失败") : tr("已备份（备份目录保留最近 14 份）");
+    emit lastExportMessageChanged();
+    return !path.isEmpty();
+}
+
+bool AppController::openToastTarget() const
+{
+    if (m_toastTarget == ToastTarget::Backups)
+        return openBackupsFolder();
+    return openExportFolder();
 }
 
 QVariantMap AppController::recordDetails(qint64 id) const

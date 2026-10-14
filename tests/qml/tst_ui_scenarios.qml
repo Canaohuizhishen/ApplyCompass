@@ -393,6 +393,37 @@ TestCase {
         App.saveWindowState(-1, -1, 1320, 820, false)
     }
 
+    // ---- 设置面板（M4）：主题三态往返 + 缩放复位 + 立即备份 ----
+    function test_settingsPanel() {
+        mouseClick(findChild(win, "settingsButton"))
+        const dlg = findChild(win, "settingsDialog")
+        verify(dlg !== null)
+        tryVerify(function() { return dlg.opened }, 2000)
+
+        // 主题三态：dark/light 即时联动 Theme.dark；system 只断言偏好值（具体明暗由环境决定）
+        mouseClick(findChild(dlg, "themeDarkButton"))
+        tryVerify(function() { return App.themePreference === "dark" && Theme.dark === true })
+        mouseClick(findChild(dlg, "themeLightButton"))
+        tryVerify(function() { return App.themePreference === "light" && Theme.dark === false })
+        compare(Theme.surface.toString().toUpperCase(), "#FFFFFF")
+        mouseClick(findChild(dlg, "themeSystemButton"))
+        tryVerify(function() { return App.themePreference === "system" })
+
+        // 缩放复位
+        App.setUiZoom(1.3)
+        tryVerify(function() { return findChild(dlg, "resetZoomButton").enabled })
+        mouseClick(findChild(dlg, "resetZoomButton"))
+        tryVerify(function() { return App.uiZoom === 1.0 })
+
+        // 立即备份（测试数据目录为临时目录，安全）：toast 消息 + 备份目录出现文件
+        mouseClick(findChild(dlg, "backupNowButton"))
+        tryVerify(function() { return App.lastExportMessage.indexOf("已备份") === 0 })
+        App.clearExportMessage()
+
+        dlg.close()
+        tryVerify(function() { return !dlg.opened }, 2000)
+    }
+
     // ---- Ctrl+滚轮缩放 ----
     function test_zoomByCtrlWheelAndClamp() {
         App.setUiZoom(1.0)

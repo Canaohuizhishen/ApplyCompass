@@ -16,6 +16,18 @@ Dialog {
     standardButtons: Dialog.NoButton
     closePolicy: Popup.CloseOnEscape
 
+    // 透明自定义 header：Fusion 默认 header 的不透明底色块会盖住圆角（M4 方角元凶）
+    header: Label {
+        text: dialog.title
+        leftPadding: Theme.gapL
+        rightPadding: Theme.gapL
+        topPadding: Theme.gapM
+        bottomPadding: 0
+        font.pixelSize: Theme.fontTitle
+        font.bold: true
+        color: Theme.textPrimary
+    }
+
     // 轻量淡入淡出（M3 动效）
     enter: Transition {
         NumberAnimation { property: "opacity"; from: 0; to: 1; duration: Theme.dur }

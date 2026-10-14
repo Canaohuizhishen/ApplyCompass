@@ -203,7 +203,7 @@ ListView {
         }
     }
 
-    ScrollBar.vertical: ScrollBar {
+    ScrollBar.vertical: AppScrollBar {
         policy: ScrollBar.AsNeeded
     }
 }

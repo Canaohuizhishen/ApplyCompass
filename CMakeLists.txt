@@ -69,6 +69,13 @@ qt_add_qml_module(applycompass_ui
         qml/DetailsDrawer.qml
         qml/AppButton.qml
         qml/ZoomWheelHandler.qml
+        qml/AppTextField.qml
+        qml/AppTextArea.qml
+        qml/AppComboBox.qml
+        qml/AppMenu.qml
+        qml/AppMenuItem.qml
+        qml/AppScrollBar.qml
+        qml/SettingsDialog.qml
     RESOURCES
         qml/icons/plus.svg
         qml/icons/export.svg
@@ -78,6 +85,8 @@ qt_add_qml_module(applycompass_ui
         qml/icons/search.svg
         qml/icons/trash.svg
         qml/icons/funnel.svg
+        qml/icons/chevron-down.svg
+        qml/icons/gear.svg
 )
 
 target_link_libraries(applycompass_ui

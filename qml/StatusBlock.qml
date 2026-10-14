@@ -49,18 +49,20 @@ Item {
         onClicked: menu.popup()
     }
 
-    Menu {
+    AppMenu {
         id: menu
         objectName: "statusMenu"
 
         Instantiator {
             model: App.statusOptions
-            delegate: MenuItem {
+            delegate: AppMenuItem {
                 required property int index
                 required property string modelData
 
                 objectName: "statusMenuItem_" + modelData
-                text: (modelData === root.status ? "✓  " : "     ") + modelData
+                text: modelData
+                checkable: true
+                checked: modelData === root.status
                 onTriggered: root.statusChosen(modelData)
             }
             onObjectAdded: (index, object) => menu.insertItem(index, object)

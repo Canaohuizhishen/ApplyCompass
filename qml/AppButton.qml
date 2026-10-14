@@ -5,7 +5,7 @@ import QtQuick.Layouts
 
 import ApplyCompass
 
-// 统一按钮（variant：primary 实主色 / ghost 幽灵描边 / danger 危险文字）
+// 统一按钮（variant：primary 实主色 / soft 柔和浅底（可勾选）/ ghost 幽灵描边 / danger 危险文字）
 // 尺寸与字体随 Theme 令牌缩放。
 // 图标（可选）：单色 SVG + MultiEffect 染色——icon.color 未指定时跟随文本色。
 Button {
@@ -27,6 +27,8 @@ Button {
             return Theme.textOnPrimary
         if (control.variant === "danger")
             return Theme.danger
+        if (control.variant === "soft" && control.checked)
+            return Theme.primary
         return Theme.textPrimary
     }
     readonly property color _iconTint: control.icon.color.a > 0 ? control.icon.color : control._contentColor
@@ -76,6 +78,13 @@ Button {
             if (!control.enabled)
                 return control.variant === "primary"
                        ? (Theme.dark ? "#33507F" : "#A9C2F5") : "transparent"
+            if (control.variant === "soft") {
+                if (control.pressed || control.hovered)
+                    return Theme.softBgHover
+                if (control.checked)
+                    return Theme.primarySoft
+                return Theme.softBg
+            }
             if (control.pressed)
                 return control.variant === "primary" ? Theme.primaryPressed : Theme.ghostHover
             if (control.hovered)

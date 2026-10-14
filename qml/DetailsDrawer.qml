@@ -206,6 +206,18 @@ Drawer {
         title: qsTr("删除确认")
         padding: Theme.gapL
 
+        // 透明自定义 header（同 AddDialog：Fusion 默认 header 盖住圆角）
+        header: Label {
+            text: confirmDialog.title
+            leftPadding: Theme.gapL
+            rightPadding: Theme.gapL
+            topPadding: Theme.gapM
+            bottomPadding: 0
+            font.pixelSize: Theme.fontTitle
+            font.bold: true
+            color: Theme.textPrimary
+        }
+
         background: Rectangle {
             color: Theme.surface
             radius: Theme.radiusCard
