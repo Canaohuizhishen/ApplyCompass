@@ -42,9 +42,7 @@ QtObject {
     readonly property color ghostHover: dark ? "#232935" : "#F2F4F7"
 
     // ---------------- 颜色：表格 ----------------
-    readonly property color rowHoverColor: dark ? "#1D2531" : "#F0F5FF"  // 旧悬停底（M3 起行悬停改用 rowHoverOverlay 叠加层）
     readonly property color rowHoverOverlay: dark ? "#14FFFFFF" : "#142563EB" // 行悬停/选中叠加层（主色 ≈8%）
-    readonly property color rowAltColor: dark ? "#1A1F28" : "#FAFBFC"  // 淡斑马（保留；restyle 视效果取舍）
     readonly property color headBg: dark ? "#171B23" : "#FFFFFF"
     readonly property color sectionBg: dark ? "#1B202A" : "#F9FAFB"
     readonly property color scrollThumb: dark ? "#3A4150" : "#D0D5DD"
@@ -86,6 +84,9 @@ QtObject {
     function statusColor(status) {
         return statusColors[status] !== undefined ? statusColors[status] : "transparent"
     }
+
+    // 浅色状态胶囊上的文字色（9 状态色均为浅底；不随深浅主题变化）
+    readonly property color statusPillText: "#1a1a1a"
 
     // ---------------- 行状态配色（M3：整行变色） ----------------
     // 状态非空 → 整行底色 = 该状态色。浅色 = 旧表纯色（与导出的「状态整行配色」一致）；

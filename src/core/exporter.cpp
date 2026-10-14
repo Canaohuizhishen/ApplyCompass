@@ -34,6 +34,15 @@ QString statusColorHex(const QString &status)
     return kColors.value(status);
 }
 
+// 旧表实测：数据区真实边框（#BFBFBF 细线）——E7E6E6 等填充行上的"线"来自它，
+// 而非会被填充盖住的默认网格线（导出漏掉它时整块会"看着没有线"）。表头与全部
+// 数据格统一应用；无日期/无链接的空格补写空样式格，保证边框无断口。
+void applyLegacyBorder(QXlsx::Format &format)
+{
+    format.setBorderStyle(QXlsx::Format::BorderThin);
+    format.setBorderColor(QColor(QStringLiteral("#BFBFBF")));
+}
+
 const QStringList kHeaders = {
     QStringLiteral("公司"), QStringLiteral("岗位"), QStringLiteral("城市"),
     QStringLiteral("投递日期"), QStringLiteral("渠道"), QStringLiteral("状态"),
@@ -230,12 +239,13 @@ ExportResult Exporter::exportAll(Database &db, const QString &outputDir, const Q
         headFormat.setPatternForegroundColor(QColor(QStringLiteral("#F2F4F7")));
         headFormat.setPatternBackgroundColor(QColor(QStringLiteral("#F2F4F7")));
         headFormat.setFillPattern(QXlsx::Format::PatternSolid);
+        applyLegacyBorder(headFormat);
         for (int c = 0; c < kHeaders.size(); ++c)
             doc.write(2, c + 1, kHeaders.at(c), headFormat);
 
         int row = 3;
         for (const ApplicationRecord &r : records) {
-            // 状态整行浅色（§3.4 旧表实测值；与原表观感一致）
+            // 状态整行浅色 + 旧表同款边框（§3.4 实测值；与原表观感一致）
             QXlsx::Format rowFormat;
             const QString statusColor = statusColorHex(r.status);
             if (!statusColor.isEmpty()) {
@@ -243,19 +253,23 @@ ExportResult Exporter::exportAll(Database &db, const QString &outputDir, const Q
                 rowFormat.setPatternBackgroundColor(QColor(statusColor));
                 rowFormat.setFillPattern(QXlsx::Format::PatternSolid);
             }
+            applyLegacyBorder(rowFormat); // 待投白底行同样带边框
             const QStringList cells = recordCells(r);
             for (int c = 0; c < cells.size(); ++c) {
                 const int col = c + 1;
                 if ((col == 4 || col == 7)) { // 投递日期 / 状态更新
-                    if (r.applyDate.isValid() || r.statusUpdated.isValid()) {
-                        const QDate d = (col == 4) ? r.applyDate : r.statusUpdated;
-                        if (d.isValid())
-                            sheet->writeDate(row, col, d, rowFormat);
-                    }
+                    const QDate d = (col == 4) ? r.applyDate : r.statusUpdated;
+                    if (d.isValid())
+                        sheet->writeDate(row, col, d, rowFormat);
+                    else
+                        doc.write(row, col, QString(), rowFormat); // 空样式格：保边框连续
                     continue;
                 }
-                if (col == 9) // 跟进链接：可点超链接
+                if (col == 9) { // 跟进链接：可点超链接；无链接时补空样式格保边框连续
+                    if (r.link.isEmpty())
+                        doc.write(row, col, QString(), rowFormat);
                     continue;
+                }
                 doc.write(row, col, cells.at(c), rowFormat);
             }
             if (!r.link.isEmpty()) {

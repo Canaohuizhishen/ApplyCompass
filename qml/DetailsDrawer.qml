@@ -49,9 +49,16 @@ Drawer {
     ListModel { id: timelineModel }
 
     ColumnLayout {
+        id: contentRoot
         anchors.fill: parent
         anchors.margins: Theme.gapL
         spacing: Theme.gapM
+
+        // M6.2：兜底点击——标题/按钮间隙等未被控件消费的空白点击冒泡到此 → 收回字段焦点
+        // （被控件消费的点击在子级即被接受、不会冒泡到这里；字段聚焦后可由此退出）
+        TapHandler {
+            onTapped: contentRoot.forceActiveFocus()
+        }
 
         // 显式固定调色板：本机环境（KDE 平台主题）下抽屉子树的 QQC2 控件会解析到
         // 系统（Breeze）调色板而非应用调色板（对话框/主窗口不受影响），导致浅色主题
@@ -92,86 +99,107 @@ Drawer {
             }
         }
 
-        RecordForm {
-            id: form
-            objectName: "detailForm"
+        // 表单+链接+时间线：滚动区（窗口小/缩放>100% 时内部滚动，底部操作行始终可见）
+        ScrollView {
+            id: formScroll
+            objectName: "drawerFormScroll"
             Layout.fillWidth: true
-        }
+            Layout.fillHeight: true
+            contentWidth: availableWidth
+            ScrollBar.vertical: AppScrollBar { policy: ScrollBar.AsNeeded }
 
-        // 跟进链接（可点用系统浏览器打开）
-        RowLayout {
-            Layout.fillWidth: true
-            visible: form.linkText !== ""
-            Label {
-                text: qsTr("跟进链接")
-                font.pixelSize: Theme.fontSmall
-                color: Theme.textSecondary
-            }
-            Label {
-                Layout.fillWidth: true
-                text: form.linkText
-                elide: Text.ElideMiddle
-                color: Theme.linkColor
-            }
-            AppButton {
-                objectName: "openLinkButton"
-                variant: "ghost"
-                text: qsTr("打开")
-                onClicked: App.openLink(form.linkText)
-            }
-        }
+            ColumnLayout {
+                width: formScroll.availableWidth
+                spacing: Theme.gapM
 
-        Label {
-            text: qsTr("状态时间线")
-            font.bold: true
-            font.pixelSize: Theme.fontBody
-            color: Theme.textPrimary
-        }
+                // M6.2：表单与时间线之间的空白/标签点击 → 收回字段焦点
+                TapHandler {
+                    onTapped: contentRoot.forceActiveFocus()
+                }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: Theme.s(112)
-            color: Theme.sectionBg
-            radius: Theme.radius
-            border.width: 1
-            border.color: Theme.border
+                RecordForm {
+                    id: form
+                    objectName: "detailForm"
+                    Layout.fillWidth: true
+                }
 
-            ListView {
-                id: timelineList
-                objectName: "timelineList"
-                anchors.fill: parent
-                anchors.margins: Theme.gapS
-                clip: true
-                model: timelineModel
-
-                delegate: Row {
-                    width: timelineList.width
-                    height: Theme.s(20)
-                    spacing: Theme.gapM
-                    Text {
-                        width: Theme.s(130)
-                        text: model.at
-                        color: Theme.textTertiary
-                        font.pixelSize: Theme.fontSmall
-                    }
-                    Text {
-                        text: model.from + " → " + model.to
+                // 跟进链接（可点用系统浏览器打开）
+                RowLayout {
+                    Layout.fillWidth: true
+                    visible: form.linkText !== ""
+                    Label {
+                        text: qsTr("跟进链接")
                         font.pixelSize: Theme.fontSmall
                         color: Theme.textSecondary
                     }
+                    Label {
+                        Layout.fillWidth: true
+                        text: form.linkText
+                        elide: Text.ElideMiddle
+                        color: Theme.linkColor
+                    }
+                    AppButton {
+                        objectName: "openLinkButton"
+                        variant: "ghost"
+                        text: qsTr("打开")
+                        onClicked: App.openLink(form.linkText)
+                    }
+                }
+
+                Label {
+                    text: qsTr("状态时间线")
+                    font.bold: true
+                    font.pixelSize: Theme.fontBody
+                    color: Theme.textPrimary
+                }
+
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: Theme.s(112)
+                    color: Theme.sectionBg
+                    radius: Theme.radius
+                    border.width: 1
+                    border.color: Theme.border
+
+                    ListView {
+                        id: timelineList
+                        objectName: "timelineList"
+                        anchors.fill: parent
+                        anchors.margins: Theme.gapS
+                        clip: true
+                        model: timelineModel
+                        // M6.1：条目装得下时禁用事件接收 → 滚轮穿透给页面；可滚时保持域内滚动
+                        // （只读列表，禁用无副作用；enabled 门控穿透为实测有效机制）
+                        enabled: contentHeight > height + 1
+
+                        delegate: Row {
+                            width: timelineList.width
+                            height: Theme.s(20)
+                            spacing: Theme.gapM
+                            Text {
+                                width: Theme.s(130)
+                                text: model.at
+                                color: Theme.textTertiary
+                                font.pixelSize: Theme.fontSmall
+                            }
+                            Text {
+                                text: model.from + " → " + model.to
+                                font.pixelSize: Theme.fontSmall
+                                color: Theme.textSecondary
+                            }
+                        }
+                    }
+
+                    Text {
+                        anchors.centerIn: parent
+                        visible: timelineModel.count === 0
+                        text: qsTr("（暂无记录）")
+                        color: Theme.textTertiary
+                        font.pixelSize: Theme.fontSmall
+                    }
                 }
             }
-
-            Text {
-                anchors.centerIn: parent
-                visible: timelineModel.count === 0
-                text: qsTr("（暂无记录）")
-                color: Theme.textTertiary
-                font.pixelSize: Theme.fontSmall
-            }
         }
-
-        Item { Layout.fillHeight: true }
 
         RowLayout {
             Layout.fillWidth: true

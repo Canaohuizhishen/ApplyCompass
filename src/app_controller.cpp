@@ -331,9 +331,9 @@ void AppController::zoomByWheelDeltas(int angleDeltaY, int pixelDeltaY)
         zoomBySteps(steps);
 }
 
-QString AppController::lastExportMessage() const
+QString AppController::lastToastMessage() const
 {
-    return m_lastExportMessage;
+    return m_lastToastMessage;
 }
 
 QVariantMap AppController::loadWindowState() const
@@ -395,8 +395,8 @@ QVariantMap AppController::exportAll()
     QVariantMap res;
     m_toastTarget = ToastTarget::Export; // 导出消息点击 → 导出目录
     if (!m_db) {
-        m_lastExportMessage = tr("导出失败：数据库未打开");
-        emit lastExportMessageChanged();
+        m_lastToastMessage = tr("导出失败：数据库未打开");
+        emit lastToastMessageChanged();
         res.insert(QStringLiteral("ok"), false);
         return res;
     }
@@ -408,22 +408,22 @@ QVariantMap AppController::exportAll()
     res.insert(QStringLiteral("error"), r.error);
     res.insert(QStringLiteral("warning"), r.warning);
     if (r.ok()) {
-        m_lastExportMessage = r.warning.isEmpty()
+        m_lastToastMessage = r.warning.isEmpty()
                                   ? tr("已导出 → %1").arg(r.xlsxPath)
                                   : tr("已导出（%1）→ %2").arg(r.warning, r.xlsxPath);
     } else {
-        m_lastExportMessage = tr("导出失败：%1").arg(r.error);
+        m_lastToastMessage = tr("导出失败：%1").arg(r.error);
     }
-    emit lastExportMessageChanged();
+    emit lastToastMessageChanged();
     return res;
 }
 
-void AppController::clearExportMessage()
+void AppController::clearToastMessage()
 {
-    if (m_lastExportMessage.isEmpty())
+    if (m_lastToastMessage.isEmpty())
         return;
-    m_lastExportMessage.clear();
-    emit lastExportMessageChanged();
+    m_lastToastMessage.clear();
+    emit lastToastMessageChanged();
 }
 
 bool AppController::openExportFolder() const
@@ -449,13 +449,15 @@ bool AppController::backupNow()
     const QString path = m_db->backupNow();
     m_db->rotateBackups(14);
     m_toastTarget = ToastTarget::Backups; // 备份消息点击 → 备份目录
-    m_lastExportMessage = path.isEmpty() ? tr("备份失败") : tr("已备份（备份目录保留最近 14 份）");
-    emit lastExportMessageChanged();
+    m_lastToastMessage = path.isEmpty() ? tr("备份失败") : tr("已备份（备份目录保留最近 14 份）");
+    emit lastToastMessageChanged();
     return !path.isEmpty();
 }
 
 bool AppController::openToastTarget() const
 {
+    if (m_toastTarget == ToastTarget::None)
+        return false; // 仅提示类消息（如复制反馈）：点击只关闭，不开目录
     if (m_toastTarget == ToastTarget::Backups)
         return openBackupsFolder();
     return openExportFolder();
@@ -529,4 +531,8 @@ void AppController::copyRows(int firstRow, int lastRow)
         return;
     if (QGuiApplication *gui = guiApp())
         gui->clipboard()->setText(tsv);
+    // M6：复制反馈（复用 toast 通道；点击仅关闭，不带打开目录语义）
+    m_toastTarget = ToastTarget::None;
+    m_lastToastMessage = tr("已复制 %1 行到剪贴板").arg(qAbs(lastRow - firstRow) + 1);
+    emit lastToastMessageChanged();
 }

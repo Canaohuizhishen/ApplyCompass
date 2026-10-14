@@ -29,7 +29,8 @@ class AppController : public QObject
     Q_PROPERTY(QStringList kindOptions READ kindOptions CONSTANT)
     Q_PROPERTY(QString errorMessage READ errorMessage NOTIFY errorMessageChanged)
     Q_PROPERTY(qreal uiZoom READ uiZoom NOTIFY uiZoomChanged)
-    Q_PROPERTY(QString lastExportMessage READ lastExportMessage NOTIFY lastExportMessageChanged)
+    // 通用 toast 消息通道（导出/备份/复制反馈共用；UI 6 秒自动消散）
+    Q_PROPERTY(QString lastToastMessage READ lastToastMessage NOTIFY lastToastMessageChanged)
     Q_PROPERTY(bool darkMode READ darkMode NOTIFY darkModeChanged)
     Q_PROPERTY(QString themePreference READ themePreference NOTIFY themePreferenceChanged)
 
@@ -76,9 +77,9 @@ public:
     Q_INVOKABLE void saveWindowState(int x, int y, int width, int height, bool maximized);
 
     // ---- 导出（§3.6）----
-    QString lastExportMessage() const;
+    QString lastToastMessage() const;         // 通用 toast 消息（导出/备份/复制反馈共用）
     Q_INVOKABLE QVariantMap exportAll();      // 全量导出 xlsx+csv，返回 {ok,xlsx,csv,error,warning}
-    Q_INVOKABLE void clearExportMessage();
+    Q_INVOKABLE void clearToastMessage();
     Q_INVOKABLE bool openExportFolder() const;
 
     // ---- QML 接口 ----
@@ -98,7 +99,7 @@ public:
 signals:
     void errorMessageChanged();
     void uiZoomChanged();
-    void lastExportMessageChanged();
+    void lastToastMessageChanged();
     void darkModeChanged();
     void themePreferenceChanged();
 
@@ -118,8 +119,8 @@ private:
     QString m_error;
     qreal m_uiZoom = 1.0;
     int m_wheelPixelAccum = 0; // 触摸板像素级滚动的累积量（±40px = 一步）
-    QString m_lastExportMessage;
-    enum class ToastTarget { Export, Backups }; // toast 点击打开的目录
+    QString m_lastToastMessage;
+    enum class ToastTarget { Export, Backups, None }; // toast 点击打开的目录（None=仅提示，如复制反馈）
     ToastTarget m_toastTarget = ToastTarget::Export;
 
     int m_darkModeOverride = -1; // -1=跟随系统；0/1=环境或调用方强制

@@ -33,7 +33,7 @@ Item {
             anchors.centerIn: parent
             width: parent.width - Theme.gapS
             text: root.status !== "" ? root.status : "—"
-            color: root.status !== "" ? "#1a1a1a" : Theme.textTertiary
+            color: root.status !== "" ? Theme.statusPillText : Theme.textTertiary
             font.pixelSize: Theme.fontBadge
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter

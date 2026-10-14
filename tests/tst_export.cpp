@@ -120,6 +120,22 @@ void TstExport::exportContents()
              QStringLiteral("#E7E6E6"));
     QCOMPARE(sheet->cellAt(4, 1)->format().patternBackgroundColor().name().toUpper(),
              QStringLiteral("#C6EFCE"));
+
+    // 旧表同款细边框（导出"有线"的根因修复）：表头/已投/待投/空日期/空链接格都须带边框
+    const auto isThinBordered = [sheet](int row, int col) {
+        const std::shared_ptr<QXlsx::Cell> cell = sheet->cellAt(row, col);
+        if (!cell)
+            return false;
+        const QXlsx::Format f = cell->format();
+        return f.leftBorderStyle() == QXlsx::Format::BorderThin
+               && f.topBorderStyle() == QXlsx::Format::BorderThin
+               && f.leftBorderColor().name().toUpper() == QStringLiteral("#BFBFBF");
+    };
+    QVERIFY(isThinBordered(2, 1)); // 表头（公司）
+    QVERIFY(isThinBordered(3, 1)); // 已投（初筛行）
+    QVERIFY(isThinBordered(5, 4)); // 待投丙软件：无日期的空样式格
+    QVERIFY(isThinBordered(3, 9)); // 甲科技：有链接的超链接格
+    QVERIFY(isThinBordered(5, 9)); // 丙软件：无链接的空样式格
 }
 
 void TstExport::csvBytesAndQuoting()

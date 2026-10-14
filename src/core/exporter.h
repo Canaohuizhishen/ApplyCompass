@@ -19,6 +19,7 @@ struct ExportResult
 
 // 全量导出（设计文档 §3.6 + §11 增补）：
 //  xlsx = 原表列序 A–J + 新列（类型/职责/要求/薪资）；状态整行配色（旧表实测值）；
+//         表头/数据全格 #BFBFBF 细边框（旧表同款；无日期/无链接格补空样式格）；
 //         跟进链接 writeHyperlink 可点；顶部统计行；冻结前两行（保存后 ZIP 注入 pane，失败降级）；
 //  csv  = 同列序，UTF-8 带 BOM（WPS 中文兼容），CRLF。
 class Exporter

@@ -382,6 +382,12 @@ ApplicationWindow {
                                     color: Theme.textSecondary
                                     font.pixelSize: Theme.fontSmall
                                     font.bold: true
+
+                                    // 「内容点」列：悬停提示三圆点含义（职责/要求/备注）
+                                    HoverHandler { id: colHover }
+                                    ToolTip.visible: modelData === "dots" && colHover.hovered
+                                    ToolTip.delay: 400
+                                    ToolTip.text: qsTr("依次：职责 / 要求 / 备注")
                                 }
                             }
                         }
@@ -403,7 +409,7 @@ ApplicationWindow {
         }
     }
 
-    // 导出/操作结果提示（点击打开导出目录；6 秒自动消散）
+    // 操作结果提示（导出/备份/复制反馈；点击打开相关目录或仅关闭；6 秒自动消散）
     Rectangle {
         id: toast
         objectName: "toast"
@@ -418,14 +424,14 @@ ApplicationWindow {
         border.width: Theme.dark ? 1 : 0
         border.color: Theme.dark ? "#3A4150" : "transparent"
         visible: opacity > 0
-        opacity: App.lastExportMessage !== "" ? 1 : 0
+        opacity: App.lastToastMessage !== "" ? 1 : 0
         Behavior on opacity { NumberAnimation { duration: Theme.durSlow } }
         z: 200
 
         Text {
             id: toastText
             anchors.centerIn: parent
-            text: App.lastExportMessage
+            text: App.lastToastMessage
             color: "#FFFFFF"
             font.pixelSize: Theme.fontSmall
         }
@@ -434,13 +440,13 @@ ApplicationWindow {
             cursorShape: Qt.PointingHandCursor
             onClicked: {
                 App.openToastTarget()
-                App.clearExportMessage()
+                App.clearToastMessage()
             }
         }
         Timer {
             interval: 6000
             running: toast.visible
-            onTriggered: App.clearExportMessage()
+            onTriggered: App.clearToastMessage()
         }
     }
 

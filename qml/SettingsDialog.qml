@@ -44,6 +44,9 @@ Dialog {
         NumberAnimation { property: "opacity"; from: 1; to: 0; duration: Theme.durFast }
     }
 
+    // Ctrl+滚轮缩放（与添加窗/抽屉一致；M6 补齐）
+    ZoomWheelHandler { }
+
     // 分段控件：连体三段开关（激活段＝主色实底白字）
     component SegButton: Button {
         id: seg

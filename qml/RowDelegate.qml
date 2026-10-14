@@ -77,6 +77,7 @@ Item {
         id: rowMouse
         anchors.fill: parent
         hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
         onClicked: root.rowClicked(model.id)
     }
 

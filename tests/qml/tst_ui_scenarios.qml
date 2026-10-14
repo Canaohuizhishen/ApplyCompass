@@ -76,7 +76,10 @@ TestCase {
     function openDrawerFor(recordId) {
         const row = rowItem(recordId)
         verify(row !== null)
-        mouseClick(row)
+        // 注意（M6）：缩放 >100% 时表格内容宽于窗口（横向滚动场景），行的几何中心会落在
+        // 窗口可视区之外——mouseClick 的合成点击将落空（实测 rowClicked 信号不发出）。
+        // 因此点击行内"窗口内必然可见"的靠左位置（scroll=0 时行左端与窗口左端对齐）。
+        mouseClick(row, Math.min(row.width / 2, win.width - 60), row.height / 2)
         const drawer = findChild(win, "detailsDrawer")
         tryVerify(function() { return drawer.opened }, 2000)
         return drawer
@@ -359,6 +362,9 @@ TestCase {
 
         // Ctrl+C：触发复制（TSV 内容由 tst_model.tsvTextFormat 锚定）
         keyClick(Qt.Key_C, Qt.ControlModifier)
+        // M6：复制反馈 → toast 消息（点击仅关闭）
+        tryVerify(function() { return App.lastToastMessage.indexOf("已复制") === 0 })
+        App.clearToastMessage()
 
         // 普通移动重置锚点 → 回到单行选择
         keyClick(Qt.Key_Up)
@@ -417,8 +423,8 @@ TestCase {
 
         // 立即备份（测试数据目录为临时目录，安全）：toast 消息 + 备份目录出现文件
         mouseClick(findChild(dlg, "backupNowButton"))
-        tryVerify(function() { return App.lastExportMessage.indexOf("已备份") === 0 })
-        App.clearExportMessage()
+        tryVerify(function() { return App.lastToastMessage.indexOf("已备份") === 0 })
+        App.clearToastMessage()
 
         // M5：点击对话框外部 → 关闭（CloseOnPressOutside）
         mouseClick(win.contentItem, 60, 420)
@@ -439,6 +445,278 @@ TestCase {
         // 点抽屉之外（遮罩区）→ 关闭（QQC2 CloseOnPressOutside）
         mouseClick(win.contentItem, 100, 300)
         tryVerify(function() { return !drawer.opened }, 2000)
+    }
+
+    // ---- M6 锚定：小窗口/放大缩放下，抽屉底部操作行必须可达（滚动兜底回归）----
+    // 修复前实测：最小窗(980×560)@100% 时 saveButton y≈779 超出可视高；@160% 时
+    // 连默认窗口(1320×820)都放不下（y≈1231）。修复 = 中段滚动区 + 底部操作行固定。
+    function test_drawerButtonsReachableWhenTight() {
+        const id = App.addRecord({
+            "company": "兜底甲", "position": "p", "kind": "实习", "region": "成都",
+            "channel": "BOSS", "resumeVersion": "C++服务端开发",
+            "link": "https://example.com/job/1",
+            "duties": "职责", "requirements": "要求", "notes": "备注",
+            "status": "Offer", "applyDate": "2026-10-03", "salary": "25×16"
+        })
+        verify(id > 0)
+
+        // 最小窗口 @100%
+        win.width = 980
+        win.height = 560
+        App.setUiZoom(1.0)
+        wait(120)
+        let drawer = openDrawerFor(id)
+        wait(50)
+        let save = findChild(drawer, "saveButton")
+        verify(save !== null)
+        let pos = save.mapToItem(drawer.contentItem, 0, 0)
+        verify(pos.y >= 0 && pos.y + save.height <= drawer.contentItem.height + 1,
+               "min-z1.0：保存按钮应可见（y=" + pos.y + " root.h=" + drawer.contentItem.height + "）")
+        drawer.close()
+        tryVerify(function() { return !drawer.opened }, 2000)
+        wait(250)
+
+        // 最小窗口 @160%（极端组合）：操作行仍可达，且滚动区确实生效
+        App.setUiZoom(1.6)
+        wait(160)
+        drawer = openDrawerFor(id)
+        wait(50)
+        save = findChild(drawer, "saveButton")
+        pos = save.mapToItem(drawer.contentItem, 0, 0)
+        verify(pos.y >= 0 && pos.y + save.height <= drawer.contentItem.height + 1,
+               "min-z1.6：保存按钮应可见（y=" + pos.y + " root.h=" + drawer.contentItem.height + "）")
+        const scroll = findChild(drawer, "drawerFormScroll")
+        verify(scroll !== null)
+        tryVerify(function() { return scroll.contentItem.contentHeight > scroll.height + 1 })
+        drawer.close()
+        tryVerify(function() { return !drawer.opened }, 2000)
+        wait(250)
+
+        // 默认窗口 @160%
+        App.setUiZoom(1.0)
+        win.width = 1320
+        win.height = 820
+        App.setUiZoom(1.6)
+        wait(160)
+        drawer = openDrawerFor(id)
+        wait(50)
+        save = findChild(drawer, "saveButton")
+        pos = save.mapToItem(drawer.contentItem, 0, 0)
+        verify(pos.y >= 0 && pos.y + save.height <= drawer.contentItem.height + 1,
+               "default-z1.6：保存按钮应可见（y=" + pos.y + " root.h=" + drawer.contentItem.height + "）")
+        drawer.close()
+        tryVerify(function() { return !drawer.opened }, 2000)
+
+        // 还原缩放与窗口布局记忆（防止污染后续用例建窗）
+        App.setUiZoom(1.0)
+        win.width = 1320
+        win.height = 820
+        App.saveWindowState(-1, -1, 1320, 820, false)
+    }
+
+    // ---- M6 锚定：小窗口/放大缩放下，添加对话框底部按钮必须可达（滚动兜底回归）----
+    // 修复前实测（980×560@160%）：表单底 776 越过按钮顶 417（重叠 ~359px）；默认窗@160% 也有 ~99px。
+    function test_addDialogButtonsReachableWhenTight() {
+        win.width = 980
+        win.height = 560
+        App.setUiZoom(1.6)
+        wait(150)
+
+        const dlg = findChild(win.contentItem, "addDialog")
+        dlg.openForNew()
+        tryVerify(function() { return dlg.opened }, 2000)
+        waitForRendering(win.contentItem)
+        wait(100)
+
+        const accept = findChild(dlg, "acceptButton")
+        const cancel = findChild(dlg, "cancelButton")
+        verify(accept !== null && cancel !== null)
+        const ap = accept.mapToItem(win.contentItem, 0, 0)
+        const cp = cancel.mapToItem(win.contentItem, 0, 0)
+        verify(ap.y >= 0 && ap.y + accept.height <= win.height + 1,
+               "acceptButton 应在窗口内（y=" + ap.y + " win.h=" + win.height + "）")
+        verify(cp.y >= 0 && cp.y + cancel.height <= win.height + 1,
+               "cancelButton 应在窗口内（y=" + cp.y + "）")
+
+        // 表单滚动区应已生效（内容高于视口），且表单字段仍在
+        const scroll = findChild(dlg, "addFormScroll")
+        verify(scroll !== null)
+        tryVerify(function() { return scroll.contentItem.contentHeight > scroll.height + 1 })
+        const form = findChild(dlg, "addForm")
+        verify(findChild(form, "companyField") !== null)
+
+        dlg.close()
+        tryVerify(function() { return !dlg.opened }, 2000)
+
+        // 还原（防污染后续用例建窗）
+        App.setUiZoom(1.0)
+        win.width = 1320
+        win.height = 820
+        App.saveWindowState(-1, -1, 1320, 820, false)
+    }
+
+    // ---- M6.1 锚定：滚轮委派——未聚焦滚页面、聚焦滚域内（文本域/时间线）----
+    // 机制：FieldScroll（自管 Flickable）在未聚焦（或装得下）时用 HorizontalFlick 让纵向
+    // 滚轮穿透给页面；聚焦且可滚才 VerticalFlick 做域内滚动。修复前：域上滚轮被包装
+    // ScrollView 无条件消费，页面不动（用户实报）。
+    function test_wheelScrollDelegation() {
+        win.width = 980
+        win.height = 560
+        App.setUiZoom(1.0)
+        wait(120)
+
+        const id = App.addRecord({
+            "company": "滚轮乙", "position": "p", "status": "Offer", "applyDate": "2026-10-03",
+            "duties": "职责1\n职责2\n职责3\n职责4\n职责5\n职责6\n职责7\n职责8\n职责9",
+            "notes": "备注1\n备注2\n备注3\n备注4\n备注5\n备注6"
+        })
+        verify(id > 0)
+        const drawer = openDrawerFor(id)
+        const form = findChild(drawer, "detailForm")
+        const duties = findChild(form, "dutiesArea")
+        const dutiesScroll = duties.parent.parent // FieldScroll（自管 Flickable 包装）
+        const drawScroll = findChild(drawer, "drawerFormScroll").contentItem
+
+        // 1) 未聚焦：域上滚 → 页面动、域不动
+        drawScroll.contentY = 0
+        dutiesScroll.contentY = 0
+        wait(120)
+        mouseWheel(duties, duties.width / 2, 20, 0, -120, Qt.NoButton, Qt.NoModifier)
+        wait(250)
+        verify(drawScroll.contentY > 1,
+               "未聚焦域上滚应滚动页面（drawerY=" + drawScroll.contentY + "）")
+        compare(dutiesScroll.contentY, 0)
+        // 1b) 反向滚动
+        const afterDown = drawScroll.contentY
+        mouseWheel(duties, duties.width / 2, 20, 0, 120, Qt.NoButton, Qt.NoModifier)
+        wait(250)
+        verify(drawScroll.contentY < afterDown,
+               "向上滚应回收页面（" + afterDown + "→" + drawScroll.contentY + "）")
+
+        // 2) 点击聚焦：域上滚 → 域动、页面不动
+        drawScroll.contentY = 0
+        wait(120)
+        mouseClick(duties, duties.width / 2, 20)
+        tryVerify(function() { return duties.activeFocus }, 1000)
+        mouseWheel(duties, duties.width / 2, 20, 0, -120, Qt.NoButton, Qt.NoModifier)
+        wait(250)
+        verify(dutiesScroll.contentY > 1,
+               "聚焦后域内应滚动（innerY=" + dutiesScroll.contentY + "）")
+        compare(drawScroll.contentY, 0)
+
+        // 3) 时间线（装得下、不可滚）→ 滚轮穿透给页面
+        //    注意：contentY=0 时时间线在视口外，先滚到底使其可见，再用向上滚验证穿透
+        const timeline = findChild(drawer, "timelineList")
+        drawScroll.contentY = drawScroll.contentHeight - drawScroll.height
+        wait(150)
+        const beforeUp = drawScroll.contentY
+        mouseWheel(timeline, timeline.width / 2, timeline.height / 2, 0, 120, Qt.NoButton, Qt.NoModifier)
+        wait(250)
+        verify(drawScroll.contentY < beforeUp,
+               "时间线不可滚时滚轮应穿透（" + beforeUp + "→" + drawScroll.contentY + "）")
+
+        drawer.close()
+        tryVerify(function() { return !drawer.opened }, 2000)
+
+        // 4) 添加对话框：空的文本域（装得下）→ 滚轮穿透滚对话框表单
+        const dlg = findChild(win.contentItem, "addDialog")
+        dlg.openForNew()
+        tryVerify(function() { return dlg.opened }, 2000)
+        waitForRendering(win.contentItem)
+        wait(100)
+        const dlgForm = findChild(dlg, "addForm")
+        const dlgArea = findChild(dlgForm, "dutiesArea")
+        const dlgScroll = findChild(dlg, "addFormScroll").contentItem
+        mouseWheel(dlgArea, dlgArea.width / 2, Math.min(20, dlgArea.height / 2), 0, -120,
+                   Qt.NoButton, Qt.NoModifier)
+        wait(250)
+        verify(dlgScroll.contentY > 1,
+               "对话框内空文本域上滚应滚动对话框（dlgY=" + dlgScroll.contentY + "）")
+        dlg.close()
+        tryVerify(function() { return !dlg.opened }, 2000)
+
+        // 还原（防污染后续用例）
+        App.setUiZoom(1.0)
+        win.width = 1320
+        win.height = 820
+        App.saveWindowState(-1, -1, 1320, 820, false)
+    }
+
+    // ---- M6.2 锚定：点空白取消字段聚焦（失焦出口；滚轮委派闭环的最后一环）----
+    // 旅程：聚焦字段→滚（域动）→点空白→失焦→再滚（页面动）→控件点击不受影响。
+    // 修复前：点标题/标签不失焦，字段占满表单，聚焦后想滚页面只能移开鼠标或滚到域底。
+    function test_clickBlankClearsFocus() {
+        win.width = 980
+        win.height = 560
+        App.setUiZoom(1.0)
+        wait(120)
+
+        const id = App.addRecord({
+            "company": "失焦甲", "position": "p", "status": "Offer", "applyDate": "2026-10-03",
+            "duties": "职责1\n职责2\n职责3\n职责4\n职责5\n职责6\n职责7\n职责8\n职责9"
+        })
+        verify(id > 0)
+        const drawer = openDrawerFor(id)
+        const drawerRoot = drawer.contentItem
+        const form = findChild(drawer, "detailForm")
+        const duties = findChild(form, "dutiesArea")
+        const dutiesScroll = duties.parent.parent
+        const drawScroll = findChild(drawer, "drawerFormScroll").contentItem
+
+        // 1) 聚焦字段 → 域上滚 → 域动、页面不动（既有一致性）
+        mouseClick(duties, duties.width / 2, 20)
+        tryVerify(function() { return duties.activeFocus }, 1000)
+        drawScroll.contentY = 0
+        dutiesScroll.contentY = 0
+        wait(120)
+        mouseWheel(duties, duties.width / 2, 20, 0, -120, Qt.NoButton, Qt.NoModifier)
+        wait(250)
+        verify(dutiesScroll.contentY > 1, "聚焦后域内应滚动（innerY=" + dutiesScroll.contentY + "）")
+        compare(drawScroll.contentY, 0)
+
+        // 2) 点标题区（空白）→ 失焦
+        mouseClick(drawerRoot, 80, 20)
+        tryVerify(function() { return !duties.activeFocus }, 1000)
+
+        // 2b) 点表单内标签区（职责标签，字段上方 10px）→ 同样失焦
+        dutiesScroll.contentY = 0 // 复位（步骤 1 曾把域滚到 72，点 y=20 会落到视口外）
+        wait(80)
+        mouseClick(duties, duties.width / 2, 20)
+        tryVerify(function() { return duties.activeFocus }, 1000)
+        const above = duties.mapToItem(drawerRoot, duties.width / 2, -10)
+        mouseClick(drawerRoot, above.x, above.y)
+        tryVerify(function() { return !duties.activeFocus }, 1000)
+
+        // 3) 失焦后再滚 → 页面动（闭环）
+        drawScroll.contentY = 0
+        wait(120)
+        mouseWheel(duties, duties.width / 2, 20, 0, -120, Qt.NoButton, Qt.NoModifier)
+        wait(250)
+        verify(drawScroll.contentY > 1, "失焦后域上滚应滚动页面（drawerY=" + drawScroll.contentY + "）")
+
+        drawer.close()
+        tryVerify(function() { return !drawer.opened }, 2000)
+
+        // 4) 添加对话框变体：聚焦 → 点标题区 → 失焦；取消按钮仍可点（控件存活）
+        const dlg = findChild(win.contentItem, "addDialog")
+        dlg.openForNew()
+        tryVerify(function() { return dlg.opened }, 2000)
+        waitForRendering(win.contentItem)
+        wait(100)
+        const dlgForm = findChild(dlg, "addForm")
+        const dlgArea = findChild(dlgForm, "dutiesArea")
+        mouseClick(dlgArea, dlgArea.width / 2, Math.min(20, dlgArea.height / 2))
+        tryVerify(function() { return dlgArea.activeFocus }, 1000)
+        mouseClick(dlg.contentItem, 80, 20)
+        tryVerify(function() { return !dlgArea.activeFocus }, 1000)
+        mouseClick(findChild(dlg, "cancelButton"))
+        tryVerify(function() { return !dlg.opened }, 2000)
+
+        // 还原（防污染后续用例）
+        App.setUiZoom(1.0)
+        win.width = 1320
+        win.height = 820
+        App.saveWindowState(-1, -1, 1320, 820, false)
     }
 
     // ---- Ctrl+滚轮缩放 ----
@@ -588,13 +866,13 @@ TestCase {
         App.addRecord({ "company": "导出甲", "position": "p", "status": "初筛",
                         "link": "https://example.com/job/9" })
         App.addRecord({ "company": "导出乙", "position": "p" })
-        App.clearExportMessage()
+        App.clearToastMessage()
 
         const exportButton = findChild(win, "exportButton")
         verify(exportButton !== null)
         mouseClick(exportButton)
-        tryVerify(function() { return App.lastExportMessage !== "" })
-        verify(App.lastExportMessage.indexOf("已导出") === 0)
+        tryVerify(function() { return App.lastToastMessage !== "" })
+        verify(App.lastToastMessage.indexOf("已导出") === 0)
 
         const res = App.exportAll() // 复跑校验返回结构（幂等）
         compare(res.ok, true)

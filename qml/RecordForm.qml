@@ -12,10 +12,34 @@ ColumnLayout {
 
     spacing: Theme.gapS
 
+    // M6.2：表单内空白/标签点击（未被控件消费）→ 收回字段焦点（详情抽屉与添加对话框共用）
+    TapHandler {
+        onTapped: form.forceActiveFocus()
+    }
+
     // 字段标签统一样式
     component FieldLabel: Label {
         font.pixelSize: Theme.fontSmall
         color: Theme.textSecondary
+    }
+
+    // 多行文本域的滚动包装（M6.1）：自管 Flickable 替代 ScrollView。
+    // 滚轮委派策略（实测：Qt 不消费与 flickableDirection 不符的滚轮）：
+    //  未聚焦（或域内容装得下）→ HorizontalFlick：纵向滚轮穿透给外层页面；
+    //  聚焦且可滚 → VerticalFlick：域内滚动。
+    component FieldScroll: Flickable {
+        id: fieldScroll
+
+        property Item fieldItem: null // 域内文本域（由其 activeFocus 门控方向）
+
+        contentWidth: width
+        contentHeight: fieldItem ? fieldItem.implicitHeight : 0
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        flickableDirection: fieldItem && fieldItem.activeFocus
+                            && contentHeight > height + 1
+                            ? Flickable.VerticalFlick : Flickable.HorizontalFlick
+        ScrollBar.vertical: AppScrollBar { policy: ScrollBar.AsNeeded }
     }
 
     readonly property string companyText: companyField.text
@@ -147,36 +171,45 @@ ColumnLayout {
 
     // ---- 多行文本 ----
     FieldLabel { text: qsTr("职责") }
-    ScrollView {
+    FieldScroll {
+        id: dutiesScroll
         Layout.fillWidth: true
         implicitHeight: Theme.s(76)
+        fieldItem: dutiesArea
         AppTextArea {
             id: dutiesArea
             objectName: "dutiesArea"
+            width: dutiesScroll.width
             wrapMode: TextArea.Wrap
             placeholderText: qsTr("招聘页整段粘贴…")
         }
     }
 
     FieldLabel { text: qsTr("要求") }
-    ScrollView {
+    FieldScroll {
+        id: requirementsScroll
         Layout.fillWidth: true
         implicitHeight: Theme.s(76)
+        fieldItem: requirementsArea
         AppTextArea {
             id: requirementsArea
             objectName: "requirementsArea"
+            width: requirementsScroll.width
             wrapMode: TextArea.Wrap
             placeholderText: qsTr("招聘页整段粘贴…")
         }
     }
 
     FieldLabel { text: qsTr("备注") }
-    ScrollView {
+    FieldScroll {
+        id: notesScroll
         Layout.fillWidth: true
         implicitHeight: Theme.s(56)
+        fieldItem: notesArea
         AppTextArea {
             id: notesArea
             objectName: "notesArea"
+            width: notesScroll.width
             wrapMode: TextArea.Wrap
             placeholderText: qsTr("自由备注…")
         }

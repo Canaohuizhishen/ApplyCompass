@@ -12,6 +12,8 @@ ListView {
     clip: true
     model: App.model
     boundsBehavior: Flickable.StopAtBounds
+    // 底部留白：横向滚动条（缩放 >100% 出现）为叠加式，避免压住最后一行下沿
+    bottomMargin: Theme.s(10)
 
     focus: true
     property int currentId: -1 // 键盘光标行（-1 = 无）
