@@ -81,7 +81,6 @@ qt_add_qml_module(applycompass_ui
         qml/icons/export.svg
         qml/icons/link.svg
         qml/icons/close.svg
-        qml/icons/warn.svg
         qml/icons/search.svg
         qml/icons/trash.svg
         qml/icons/funnel.svg

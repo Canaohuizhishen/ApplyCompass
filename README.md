@@ -3,7 +3,7 @@
 本地单机求职投递管理工具（Qt6 C++/QML + SQLite）。
 **设计文档：`docs/设计文档.md`（v1.0）——实现以此为准。**
 
-- **状态**：**M4 完成**（2026-10-14）。M1 = 骨架 / SQLite / 两段式表格 / 表单 / 详情抽屉 / 状态快改 / 自动规则 / 43 条导入 / 统计条 / 备份轮转；M2 = 搜索与筛选 / 待跟进提醒 / 导出 xlsx+csv / 快捷键全量 / Ctrl+滚轮缩放 / 视觉刷新；M3 = 整行状态配色 / 深浅色跟随系统 / SVG 图标集与空态 / 轻量动效 / 窗口布局记忆 / Ctrl+C 复制选中行 TSV；M4 = **控件全面圆角化（根治对话框方角）** / 设置面板（主题三态/缩放复位/数据维护/关于）（详见设计文档 §11–§13）。
+- **状态**：**M4 完成**（2026-10-14）。M1 = 骨架 / SQLite / 两段式表格 / 表单 / 详情抽屉 / 状态快改 / 自动规则 / 43 条导入 / 统计条 / 备份轮转；M2 = 搜索与筛选 / 待跟进提醒 / 导出 xlsx+csv / 快捷键全量 / Ctrl+滚轮缩放 / 视觉刷新；M3 = 整行状态配色 / 深浅色跟随系统 / SVG 图标集与空态 / 轻量动效 / 窗口布局记忆 / Ctrl+C 复制选中行 TSV；M4 = **控件全面圆角化（根治对话框方角）** / 设置面板（主题三态/缩放复位/数据维护/关于）；M5 = **主题持久化时序修复** / 设置页布局重构（分段控件） / 抽屉与设置**点外部关闭** / 顶栏 chip 去图标（详见设计文档 §11–§14）。
   M1 验收 = §8 场景 1–6、11；M2 验收 = §8 场景 7–10；M3/M4 验收 = §8 十一条全回归 + 圆角剖面实证（均通过）。
 - **内核**：方便记录投递信息——点「+ 添加」表单录入、单击行看详情、状态块单击快改；日期 / 归位 / 变色自动完成。
 - **技术栈**：Qt 6.11 C++/QML、SQLite（QtSql）、CMake/Ninja；旧表导入 QXlsx（`pacman extra/qxlsx`）。
@@ -20,10 +20,10 @@ cmake --build build --parallel 4        # 本机纪律：显式限并行（严�
 ## 测试
 
 ```bash
-ctest --test-dir build --output-on-failure   # 串行跑；6 个目标
+ctest --test-dir build --output-on-failure   # 串行跑；7 个目标
 # tst_rule_engine（规则）、tst_database（存储/备份）、tst_importer（旧表导入，需真实文件）、
 # tst_model（待跟进边界/筛选双口径/TSV 复制）、tst_export（xlsx 读回/CSV BOM/冻结注入）、
-# tst_ui（界面全场景：23 用例）
+# tst_controller（启动逻辑：主题偏好持久化/跨重启往返）、tst_ui（界面全场景：24 用例）
 # 直跑 tst_ui 须给 -input：tst_ui -input tests/qml（否则 QuickTest 扫描 cwd 会误拾其他仓库的 tst_*.qml）
 ```
 
@@ -36,7 +36,8 @@ ctest --test-dir build --output-on-failure   # 串行跑；6 个目标
 - **待跟进**：初筛且状态更新 >14 天 → 整行浅黄 + 左缘琥珀条 + 顶栏 chip 计数（点击一键筛选）。
 - **快捷键**：`n` 添加 ｜ `/` 搜索 ｜ `↑` `↓` 选行（`Shift+↑↓` 区间）｜ `Ctrl+C` 复制选中行（TSV，可直接粘进 WPS/Excel）｜ `Enter` 详情 ｜ `1`–`9` 改选中行状态 ｜ `Ctrl+E` 导出 ｜ `Esc` 关抽屉/清搜索/清筛选 ｜ `Ctrl+Q` 退出。文本输入聚焦时自动让位。
 - **窗口布局记忆**：尺寸 / 位置 / 最大化自动保存与恢复（含屏幕越界校验）；Wayland 下位置由合成器掌控（尽力而为），尺寸/最大化可靠。
-- **设置**（工具栏齿轮）：主题三态（跟随系统 / 浅色 / 深色，持久化；`APPLYCOMPASS_FORCE_*` 环境变量仍最优先）、缩放复位（100%）、数据维护（打开数据目录 / 打开备份目录 / 立即备份）、关于。
+- **设置**（工具栏齿轮）：主题三态（跟随系统 / 浅色 / 深色，持久化；`APPLYCOMPASS_FORCE_*` 环境变量仍最优先）、缩放复位（100%）、数据维护（打开数据目录 / 打开备份目录 / 立即备份）、关于；**Esc 或点对话框外任意处关闭**。
+- **点外部关闭**（M5）：详情抽屉（点左半区）与设置面板均支持点外部关闭——修完即时生效，无需找关闭按钮。
 - **控件圆角**（M4）：按钮 / 输入框 / 下拉框 / 菜单 / 滚动条 / 对话框统一圆角（控件 6px、浮层 10px 令牌；Shift 前的 Fusion 方形观感已移除）。
 - **导出**：`Ctrl+E` 或「导出」→ `投递/导出/投递罗盘_YYYY-MM-DD.xlsx`（原列序 + 新列 / 状态整行配色 / 链接可点 / 顶部统计 / 冻结前两行）+ 同名 `.csv`（UTF-8 BOM）。导出后点提示条可打开目录。
 
@@ -68,6 +69,10 @@ ctest --test-dir build --output-on-failure   # 串行跑；6 个目标
   - **Fusion 对话框“方角”元凶**：Fusion 样式 Dialog 自带默认 header（标题栏），其背景是一块不透明 `palette.window` 色矩形（仅 2px 圆角），盖住我们的圆角对话框背景 → 全部对话框改用**透明自定义 header**（保留标题文字）。
   - **控件圆角化路径**：Fusion 的 Button/ComboBox/TextField/Menu/ScrollBar 本体是方的 → 按 Qt 官方《Customizing Qt Quick Controls》所述，基于 `QtQuick.Templates` 自绘 `AppComboBox/AppTextField/AppTextArea/AppMenu(+AppMenuItem)/AppScrollBar`（结构参照 Basic 样式、令牌重绘）；**objectName 与对外 API 不变**，23 个 UI 用例零改动。规范：控件 6px / 浮层 10px（与 Fluent 的 4/8 分级同构）。
   - **主题优先级链**（勿颠倒）：`APPLYCOMPASS_FORCE_*` 环境 ＞ `setDarkModeOverride`（测试钩子）＞ `settings.theme` 用户偏好 ＞ 系统 `colorScheme`。— 调试“点了设置不变色”时先查 FORCE env！
+- **M5 补记**：
+  - **主题偏好“重启失效”根因**：`initialize()` 里 `initDarkMode()`（含首次重算）跑在偏好读库之前，读入后未再重算 → 启动被系统色覆盖。修复=读入后补一次 `recomputeDarkMode()`；`tst_controller` 锚定（含跨重启往返，修复前必挂）。
+  - **点外部关闭用 QQC2 原生 `Popup.CloseOnPressOutside`**：抽屉与设置面板通用；**自加 MouseArea 捕获层会被 modal 遮罩（Overlay dim）吃掉点击收不到事件——已实测排除，勿回退**。
+  - 设置页：分段控件（连体三段，激活段主色实底）+ 标签列对齐 + 发丝分隔 + 「完成」主按钮；objectName 全保留。
 - **M1 遗留项收口**：动效 / 深浅色 / 图标、窗口布局记忆、表格内文本选中复制——已于 M3 完成（复制采用 `Ctrl+C` 选中行 TSV 方案，拖拽划选仍因与「单击开详情」手势冲突而不做）。
 ## 相关记忆
 

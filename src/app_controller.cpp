@@ -67,6 +67,9 @@ void AppController::initialize()
     const QString theme = m_db->setting(QStringLiteral("theme"), QStringLiteral("system"));
     m_themePreference = (theme == QLatin1String("light") || theme == QLatin1String("dark"))
                             ? theme : QStringLiteral("system");
+    // 关键时序：initDarkMode() 的首次重算发生在偏好读入之前（其时仍为默认 system），
+    // 读入用户偏好后必须再重算一次——否则「选浅色→重启」会被系统色覆盖（M5 修复）。
+    recomputeDarkMode();
 
     // 每日首启备份 + 退出备份（§3.8）；空库不备份，避免堆积垃圾文件
     if (!m_db->hasBackupToday() && m_db->recordCount() > 0) {

@@ -14,7 +14,9 @@ Drawer {
     width: Math.min(Theme.s(640), parent ? parent.width * 0.58 : Theme.s(640))
     height: parent ? parent.height : 720
     interactive: true
-    closePolicy: Popup.CloseOnEscape
+    // M5：点击抽屉外部（modal 遮罩区）即关闭——QQC2 原生 CloseOnPressOutside 由 Overlay
+    // 遮罩捕获（自加 MouseArea 会被 modal 遮罩挡住收不到事件）；Esc/拖动关闭保持。
+    closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     padding: 0
 
     background: Rectangle {

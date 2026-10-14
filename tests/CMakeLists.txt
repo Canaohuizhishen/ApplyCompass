@@ -21,6 +21,12 @@ qt_add_executable(tst_export tst_export.cpp)
 target_link_libraries(tst_export PRIVATE applycompass_core Qt6::Test QXlsx::QXlsx)
 add_test(NAME tst_export COMMAND tst_export)
 
+# AppController 启动逻辑（主题偏好持久化时序；需 QGuiApplication → offscreen）
+qt_add_executable(tst_controller tst_controller.cpp)
+target_link_libraries(tst_controller PRIVATE applycompass_ui Qt6::Test)
+add_test(NAME tst_controller COMMAND tst_controller)
+set_tests_properties(tst_controller PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+
 # QuickTest（qmltestrunner 等价）：UI 场景 1–6 交互链路
 qt_add_executable(tst_ui quicktest_main.cpp)
 target_link_libraries(tst_ui PRIVATE applycompass_ui Qt6::Test Qt6::QuickTest)

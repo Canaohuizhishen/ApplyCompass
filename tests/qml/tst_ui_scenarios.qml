@@ -420,8 +420,25 @@ TestCase {
         tryVerify(function() { return App.lastExportMessage.indexOf("已备份") === 0 })
         App.clearExportMessage()
 
-        dlg.close()
+        // M5：点击对话框外部 → 关闭（CloseOnPressOutside）
+        mouseClick(win.contentItem, 60, 420)
         tryVerify(function() { return !dlg.opened }, 2000)
+    }
+
+    // ---- 详情抽屉：点左半区（抽屉外）关闭；点抽屉内部不关（M5）----
+    function test_drawerClosesOnOutsideClick() {
+        const id = App.addRecord({ "company": "抽屉甲", "position": "p", "status": "初筛", "applyDate": "2026-10-01" })
+        const drawer = openDrawerFor(id)
+        verify(drawer.opened)
+
+        // 点抽屉内部（标题区，无动作控件）→ 不关
+        mouseClick(drawer.contentItem, drawer.width / 2, 30)
+        wait(100)
+        verify(drawer.opened)
+
+        // 点抽屉之外（遮罩区）→ 关闭（QQC2 CloseOnPressOutside）
+        mouseClick(win.contentItem, 100, 300)
+        tryVerify(function() { return !drawer.opened }, 2000)
     }
 
     // ---- Ctrl+滚轮缩放 ----
