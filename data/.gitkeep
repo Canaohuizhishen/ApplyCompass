@@ -1,0 +1,1 @@
+占位文件：保持 data/ 目录存在于版本库（运行期 *.db 与 backups/ 已被 .gitignore 排除）。
