@@ -40,10 +40,10 @@ target_link_libraries(applycompass_core
     PRIVATE QXlsx::QXlsx
 )
 # 默认数据目录＝仓库 data/（可用 APPLYCOMPASS_DATA_DIR 环境变量覆盖）
-# 默认导出目录＝../投递/导出（设计文档 §3.6；可用 APPLYCOMPASS_EXPORT_DIR 覆盖）
+# 默认导出目录＝仓库 导出/（设计文档 §3.6；可用 APPLYCOMPASS_EXPORT_DIR 覆盖；.gitignore 已忽略）
 target_compile_definitions(applycompass_core PRIVATE
     APPLYCOMPASS_DEFAULT_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
-    APPLYCOMPASS_DEFAULT_EXPORT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../投递/导出"
+    APPLYCOMPASS_DEFAULT_EXPORT_DIR="${CMAKE_CURRENT_SOURCE_DIR}/导出"
 )
 # ---------------------------------------------------------------- UI（QML 模块，静态库）
 # 独立成库：应用与 QuickTest 测试二进制链接同一模块，避免资源路径问题。

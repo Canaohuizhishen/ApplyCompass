@@ -10,7 +10,7 @@ add_test(NAME tst_database COMMAND tst_database)
 qt_add_executable(tst_importer tst_importer.cpp)
 target_link_libraries(tst_importer PRIVATE applycompass_core Qt6::Test)
 target_compile_definitions(tst_importer PRIVATE
-    APPLYCOMPASS_LEGACY_XLSM="${CMAKE_CURRENT_SOURCE_DIR}/../../投递/我的投递记录_宏版.xlsm")
+    APPLYCOMPASS_LEGACY_XLSM="${CMAKE_CURRENT_SOURCE_DIR}/fixtures/我的投递记录_宏版.xlsm")
 add_test(NAME tst_importer COMMAND tst_importer)
 
 qt_add_executable(tst_model tst_model.cpp)

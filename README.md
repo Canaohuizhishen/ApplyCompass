@@ -21,7 +21,7 @@ cmake --build build --parallel 4        # 本机纪律：显式限并行（严�
 
 ```bash
 ctest --test-dir build --output-on-failure   # 串行跑；7 个目标
-# tst_rule_engine（规则）、tst_database（存储/备份）、tst_importer（旧表导入，需真实文件）、
+# tst_rule_engine（规则）、tst_database（存储/备份）、tst_importer（旧表导入，需夹具 tests/fixtures/*.xlsm）、
 # tst_model（待跟进边界/筛选双口径/TSV 复制）、tst_export（xlsx 读回/CSV BOM/冻结注入）、
 # tst_controller（启动逻辑：主题偏好持久化/跨重启往返）、tst_ui（界面全场景：24 用例）
 # 直跑 tst_ui 须给 -input：tst_ui -input tests/qml（否则 QuickTest 扫描 cwd 会误拾其他仓库的 tst_*.qml）
@@ -39,7 +39,7 @@ ctest --test-dir build --output-on-failure   # 串行跑；7 个目标
 - **设置**（工具栏齿轮）：主题三态（跟随系统 / 浅色 / 深色，持久化；`APPLYCOMPASS_FORCE_*` 环境变量仍最优先）、缩放复位（100%）、数据维护（打开数据目录 / 打开备份目录 / 立即备份）、关于；**Esc 或点对话框外任意处关闭**。
 - **点外部关闭**（M5）：详情抽屉（点左半区）与设置面板均支持点外部关闭——修完即时生效，无需找关闭按钮。
 - **控件圆角**（M4）：按钮 / 输入框 / 下拉框 / 菜单 / 滚动条 / 对话框统一圆角（控件 6px、浮层 10px 令牌；Shift 前的 Fusion 方形观感已移除）。
-- **导出**：`Ctrl+E` 或「导出」→ `投递/导出/投递罗盘_YYYY-MM-DD.xlsx`（原列序 + 新列 / 状态整行配色 / **全表 #BFBFBF 细边框（旧表同款）** / 链接可点 / 顶部统计 / 冻结前两行）+ 同名 `.csv`（UTF-8 BOM）。导出后点提示条可打开目录。
+- **导出**：`Ctrl+E` 或「导出」→ 仓库内 `导出/投递罗盘_YYYY-MM-DD.xlsx`（不入库；原列序 + 新列 / 状态整行配色 / **全表 #BFBFBF 细边框（旧表同款）** / 链接可点 / 顶部统计 / 冻结前两行）+ 同名 `.csv`（UTF-8 BOM）。导出后点提示条可打开目录。
 
 ## 数据与备份
 
@@ -47,7 +47,7 @@ ctest --test-dir build --output-on-failure   # 串行跑；7 个目标
 - 数据目录覆盖：环境变量 `APPLYCOMPASS_DATA_DIR` 或 `--data-dir <dir>`（测试即用此隔离）。
 - 一次性导入旧表（要求库为空，只读打开旧文件）：
   ```bash
-  ./build/appApplyCompass --import-legacy "../投递/我的投递记录_宏版.xlsm"
+  ./build/appApplyCompass --import-legacy "<旧表.xlsm 路径>"
   ```
   跳过【宏测试行】；类型启发：备注含「实习」或源行 40–45 → 实习（可在界面后改）。
 

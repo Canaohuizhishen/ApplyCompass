@@ -56,7 +56,7 @@ void TstImporter::importRealXlsm()
 {
     const QString path = QStringLiteral(APPLYCOMPASS_LEGACY_XLSM);
     if (!QFile::exists(path))
-        QSKIP("旧表文件不存在（本机专有路径），跳过");
+        QSKIP("旧表夹具不存在（tests/fixtures/，未入库），跳过");
 
     const ImportSummary s = LegacyImporter::importFromXlsm(path, *m_db);
     QVERIFY2(s.error.isEmpty(), qPrintable(s.error));

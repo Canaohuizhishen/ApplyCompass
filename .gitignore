@@ -5,3 +5,10 @@ compile_commands.json
 *.user
 data/*.db
 data/backups/
+
+# 仓库内导出目录（运行时生成，不入库）
+/导出/
+# 旧表导入测试夹具（个人数据，不入库）
+tests/fixtures/*.xlsm
+# reasonix 项目记忆文件（本机工具维护，不入库）
+REASONIX.md

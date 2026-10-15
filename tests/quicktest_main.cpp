@@ -17,7 +17,7 @@ public slots:
         QDir(dir).removeRecursively();
         QDir().mkpath(dir);
         qputenv("APPLYCOMPASS_DATA_DIR", dir.toLocal8Bit());
-        // 导出目录同样隔离（否则会写进真实 投递/导出/）
+        // 导出目录同样隔离（否则会写进真实 导出/）
         qputenv("APPLYCOMPASS_EXPORT_DIR",
                 QDir(dir).filePath(QStringLiteral("export")).toLocal8Bit());
     }
