@@ -1,5 +1,6 @@
 build/
 .cache/
+.reasonix/
 compile_commands.json
 *.user
 data/*.db
