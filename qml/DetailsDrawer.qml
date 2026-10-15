@@ -248,26 +248,29 @@ Drawer {
         }
     }
 
+    // M8：删除确认迁移 AddDialog 的 M6 自管布局（标题+正文+按钮同一 ColumnLayout）。
+    // 原 header/footer 老模式探针实测（Qt 6.11/Fusion，offscreen）：DialogButtonBox 皮肤
+    // 在卡片底部画不透明内衬色带（实测 #323232、radius 2），盖住 radiusCard 圆角且非主题
+    // 令牌；footer padding=6 与应用 gapL 网格不一致；正文无显式颜色（跟随 palette 解析，
+    // 实测随环境/时序波动；浅色下近白字白底不可读）、无换行（长公司名溢出卡片被硬裁）。
     Dialog {
         id: confirmDialog
         objectName: "confirmDeleteDialog"
         anchors.centerIn: parent
-        width: Theme.s(420)
+        // 同 AddDialog：宽度随缩放并钳制（zoom >150% 时 s(420) 会超出抽屉）；
+        // 高度自适应内容，放不下时留出上下边距
+        width: Math.min(Theme.s(420), parent ? parent.width - Theme.s(80) : Theme.s(420))
+        height: Math.min(implicitHeight, (parent ? parent.height : 720) - Theme.s(48))
         modal: true
         title: qsTr("删除确认")
-        padding: Theme.gapL
-
-        // 透明自定义 header（同 AddDialog：Fusion 默认 header 盖住圆角）
-        header: Label {
-            text: confirmDialog.title
-            leftPadding: Theme.gapL
-            rightPadding: Theme.gapL
-            topPadding: Theme.gapM
-            bottomPadding: 0
-            font.pixelSize: Theme.fontTitle
-            font.bold: true
-            color: Theme.textPrimary
-        }
+        padding: 0
+        standardButtons: Dialog.NoButton
+        closePolicy: Popup.CloseOnEscape
+        // Fusion 样式模板自带默认 header/footer：自定义 header 被移除后，默认 header 会
+        // 重新出现并绘制不透明内衬（探针实测 visible=true、#323232，占 30px 高、盖住顶部
+        // 圆角，与自管标题重复）。显式置 null 彻底关闭，几何=纯内容布局。
+        header: null
+        footer: null
 
         background: Rectangle {
             color: Theme.surface
@@ -276,28 +279,57 @@ Drawer {
             border.color: Theme.border
         }
 
-        Label {
-            objectName: "confirmDeleteText"
-            text: qsTr("确定删除「%1」？此操作不可撤销。").arg(form.companyText)
-            font.pixelSize: Theme.fontBody // M7：补字号令牌（原为应用默认字体，不随 zoom）
-        }
+        ColumnLayout {
+            id: confirmRoot
+            anchors.fill: parent
+            spacing: Theme.gapM
 
-        footer: DialogButtonBox {
-            spacing: Theme.gapS
-            AppButton {
-                objectName: "confirmDeleteButton"
-                variant: "danger"
-                text: qsTr("删除")
-                onClicked: {
-                    App.removeRecord(drawer.recordId)
-                    confirmDialog.close()
-                    drawer.close()
-                }
+            Label {
+                text: confirmDialog.title
+                Layout.leftMargin: Theme.gapL
+                Layout.rightMargin: Theme.gapL
+                Layout.topMargin: Theme.gapM
+                font.pixelSize: Theme.fontTitle
+                font.bold: true
+                color: Theme.textPrimary
             }
-            AppButton {
-                variant: "ghost"
-                text: qsTr("取消")
-                onClicked: confirmDialog.close()
+
+            // 正文：显式令牌（不依赖 palette 解析）+ 换行（长公司名不再溢出卡片）
+            Label {
+                objectName: "confirmDeleteText"
+                Layout.fillWidth: true
+                Layout.leftMargin: Theme.gapL
+                Layout.rightMargin: Theme.gapL
+                text: qsTr("确定删除「%1」？此操作不可撤销。").arg(form.companyText)
+                font.pixelSize: Theme.fontBody
+                color: Theme.textPrimary
+                wrapMode: Text.WordWrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.leftMargin: Theme.gapL
+                Layout.rightMargin: Theme.gapL
+                Layout.bottomMargin: Theme.gapL
+                spacing: Theme.gapS
+
+                Item { Layout.fillWidth: true }
+                AppButton {
+                    objectName: "confirmDeleteButton"
+                    variant: "danger"
+                    text: qsTr("删除")
+                    onClicked: {
+                        App.removeRecord(drawer.recordId)
+                        confirmDialog.close()
+                        drawer.close()
+                    }
+                }
+                AppButton {
+                    objectName: "cancelDeleteButton"
+                    variant: "ghost"
+                    text: qsTr("取消")
+                    onClicked: confirmDialog.close()
+                }
             }
         }
     }

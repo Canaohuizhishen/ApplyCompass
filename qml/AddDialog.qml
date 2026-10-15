@@ -7,7 +7,9 @@ import ApplyCompass
 // 添加入口表单（设计文档 §3.2）：状态留空 → 入待投区尾；非空 → 走 §5 自动规则。
 // M6：改为自管布局（标题 + 滚动表单 + 底部按钮同一 ColumnLayout）——窗口小/缩放 >100%
 // 时表单内部滚动、按钮始终可见（原「Dialog header/footer + 表单直放」在钳制高度下
-// 会内容重叠/截断，列探针实测；M4 的 Fusion 透明 header 补丁随之不再需要）。
+// 会内容重叠/截断，列探针实测）。注：M4 的 Fusion 透明 header 补丁在 M6 一并移除，
+// 但 Fusion 模板默认 header 会因此回归（M8.1 实测量化：占 30px、盖住顶部圆角），
+// 由下方显式 header: null / footer: null 关闭。
 Dialog {
     id: dialog
     objectName: "addDialog"
@@ -22,6 +24,11 @@ Dialog {
     padding: 0
     standardButtons: Dialog.NoButton
     closePolicy: Popup.CloseOnEscape
+    // M8.1：Fusion 模板默认 header/footer 必须显式关闭——默认 header 会重新出现并绘制
+    // 不透明内衬（探针实测 visible=true、#323232、radius 2、占 30px 高），盖住卡片顶部
+    // 圆角（用户实测：上两角方、下两角圆）且其标题 fontPx=12 不随缩放；footer 同理兜底。
+    header: null
+    footer: null
 
     // 轻量淡入淡出（M3 动效）
     enter: Transition {
@@ -54,6 +61,7 @@ Dialog {
         }
 
         Label {
+            objectName: "addDialogTitle"
             text: dialog.title
             Layout.leftMargin: Theme.gapL
             Layout.rightMargin: Theme.gapL

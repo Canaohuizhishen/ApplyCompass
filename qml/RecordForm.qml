@@ -185,6 +185,10 @@ ColumnLayout {
             id: dutiesArea
             objectName: "dutiesArea"
             width: dutiesScroll.width
+            // M8.1：空态盒高=视口高下限——盒底边框必须落在 FieldScroll 视口内，否则被
+            // clip 裁掉（像素实测：备注域 56 视口 vs 背景下限 70 → 底边框永不可见）；
+            // 内容增长时仍按文本撑高（> 视口即滚动，M6.1 语义不变）
+            implicitHeight: Math.max(contentHeight + topPadding + bottomPadding, dutiesScroll.height)
             wrapMode: TextArea.Wrap
             placeholderText: qsTr("招聘页整段粘贴…")
         }
@@ -200,6 +204,8 @@ ColumnLayout {
             id: requirementsArea
             objectName: "requirementsArea"
             width: requirementsScroll.width
+            // M8.1：同 dutiesArea——空态盒高=视口下限；内容增长仍撑高滚动
+            implicitHeight: Math.max(contentHeight + topPadding + bottomPadding, requirementsScroll.height)
             wrapMode: TextArea.Wrap
             placeholderText: qsTr("招聘页整段粘贴…")
         }
@@ -215,6 +221,8 @@ ColumnLayout {
             id: notesArea
             objectName: "notesArea"
             width: notesScroll.width
+            // M8.1：备注视口 56 < 背景下限 70——不设下限时底边框被 clip 裁掉（像素实测）
+            implicitHeight: Math.max(contentHeight + topPadding + bottomPadding, notesScroll.height)
             wrapMode: TextArea.Wrap
             placeholderText: qsTr("自由备注…")
         }

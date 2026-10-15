@@ -1138,4 +1138,212 @@ TestCase {
         win.height = 820
         App.saveWindowState(-1, -1, 1320, 820, false)
     }
+
+    // ---- M8：删除确认对话框（布局/颜色回归锚 + 行为流） ----
+    // 背景（探针实测，Qt 6.11/Fusion，offscreen）：老实现 header+DialogButtonBox 老模式——
+    // 底部由 Fusion 皮肤画不透明内衬色带（实测 #323232、radius 2）盖住卡片圆角；按钮距
+    // 卡片边缘仅 6px（padding=6）与应用 gapL 网格不一致；正文无显式颜色（跟随 palette
+    // 解析、随环境/时序波动）且不换行（长公司名溢出卡片被硬裁）。修复＝迁移 M6 自管布局
+    // + 正文显式 Theme.textPrimary 与 WordWrap + header/footer 显式 null（Fusion 模板
+    // 默认 header 会画 #323232 内衬条并占 30px 布局——探针实测）。
+    function openConfirmDialog(company) {
+        App.setUiZoom(1.0)
+        const id = App.addRecord({
+            "company": company, "position": "后端开发工程师", "status": "初筛"
+        })
+        verify(id > 0)
+        // 行点击 → 等抽屉打开：Drawer 的 open/close 都走 SmoothedAnimation（velocity 5，
+        // 实测量级 ~200-400ms）——轮询等待，勿在动画期间补点（抽屉开启后外部点击会被
+        // CloseOnPressOutside 消费并把它关回去；0 延时重试曾致「点开又点关」实测踩坑）
+        const row = rowItem(id)
+        verify(row !== null, "row 未找到 id=" + id)
+        mouseClick(row, Math.min(row.width / 2, win.width - 60), row.height / 2)
+        const drawer = findChild(win, "detailsDrawer")
+        const deadline = Date.now() + 2500
+        while (Date.now() < deadline && !drawer.opened)
+            wait(50)
+        if (!drawer.opened) {
+            const pos = row.mapToItem(win.contentItem, 0, 0)
+            verify(false, "drawer 未打开：公司=" + company + " id=" + id
+                   + " row=" + pos.x + "," + pos.y + " " + row.width + "x" + row.height
+                   + " win=" + win.width + "x" + win.height
+                   + " zoom=" + App.uiZoom.toFixed(2)
+                   + " count=" + App.recordCount()
+                   + " dark=" + Theme.dark)
+        }
+        mouseClick(findChild(drawer, "deleteButton"))
+        let dlg = findChild(drawer, "confirmDeleteDialog")
+        if (!dlg)
+            dlg = findChild(win, "confirmDeleteDialog")
+        verify(dlg !== null)
+        tryVerify(function() { return dlg.opened }, 2000)
+        waitForRendering(win.contentItem)
+        wait(80)
+        return { "drawer": drawer, "dlg": dlg }
+    }
+
+    function test_confirmDeleteDialogLongNameLayout() {
+        const o = openConfirmDialog("某某某某某某某某某某科技（北京）有限公司")
+        const dlg = o.dlg
+        const bg = dlg.background
+        const body = findChild(dlg, "confirmDeleteText")
+
+        // 结构锚：不得再有 Fusion 默认 header/footer（色带/方角来源；显式 null 关闭）
+        verify(dlg.header === null, "对话框不应有 header（Fusion 默认为色带标题条）")
+        verify(dlg.footer === null, "对话框不应有 footer（DialogButtonBox 皮肤画内衬色带）")
+
+        // 正文：显式换行且装得下（修复前 18 字公司名 → 单行 455px 溢出 420px 卡片）
+        compare(body.wrapMode, Text.WordWrap)
+        verify(body.lineCount >= 2, "长公司名应换行（lineCount=" + body.lineCount + "）")
+        verify(body.contentWidth <= body.width + 1,
+               "正文内容宽超出行宽（contentW=" + body.contentWidth + " width=" + body.width + "）")
+        const bp = body.mapToItem(bg, 0, 0)
+        verify(bp.x + body.width <= bg.width - Theme.gapL + 1,
+               "正文右缘越界（right=" + (bp.x + body.width) + " bg=" + bg.width + "）")
+
+        // 按钮贴 right/bottom gapL 网格（修复前 DialogButtonBox padding=6）
+        const cancel = findChild(dlg, "cancelDeleteButton")
+        const del = findChild(dlg, "confirmDeleteButton")
+        verify(cancel !== null && del !== null)
+        const cp = cancel.mapToItem(bg, 0, 0)
+        compare(Math.round(bg.width - (cp.x + cancel.width)), Theme.gapL)
+        compare(Math.round(bg.height - (cp.y + cancel.height)), Theme.gapL)
+
+        dlg.close()
+        tryVerify(function() { return !dlg.opened }, 2000)
+    }
+
+    function test_confirmDeleteDialogColorsFollowTheme() {
+        // 正文颜色显式=Theme.textPrimary（修复前跟随 palette 解析、随环境波动；
+        // 探针实测浅色下曾解析为 #f0f0f0——近白字白底不可读）。
+        // 单次打开 + 运行中切换主题：同时锚定「字面量色值」与「显式令牌的活绑定」。
+        //（不用开两次：抽屉关闭动画（SmoothedAnimation ~200ms+）未收场时，行点击会被
+        // 消费导致第二次打不开——测试合成时序问题的规避，实测 wait 收场后恢复）
+        App.setDarkModeOverride(1)
+        const o = openConfirmDialog("甲公司")
+        const body = findChild(o.dlg, "confirmDeleteText")
+        tryVerify(function() { return body.color.toString().toUpperCase() === "#E7EAF0" })
+        compare(body.color.toString(), Theme.textPrimary.toString())
+        compare(o.dlg.background.color.toString().toUpperCase(), "#171B23")
+
+        App.setDarkModeOverride(0) // 同一对话框实例上切换，绑定即时生效
+        tryVerify(function() { return body.color.toString().toUpperCase() === "#1D2939" })
+        compare(body.color.toString(), Theme.textPrimary.toString())
+        tryVerify(function() { return o.dlg.background.color.toString().toUpperCase() === "#FFFFFF" })
+
+        o.dlg.close()
+        tryVerify(function() { return !o.dlg.opened }, 2000)
+        o.drawer.close()
+        tryVerify(function() { return !o.drawer.opened }, 2000)
+
+        App.setDarkModeOverride(-1) // 还原（防污染后续用例）
+    }
+
+    function test_confirmDeleteDialogCancelKeepsRecord() {
+        const o = openConfirmDialog("取消保留公司")
+        const before = App.recordCount()
+        compare(before, 1)
+        mouseClick(findChild(o.dlg, "cancelDeleteButton"))
+        tryVerify(function() { return !o.dlg.opened }, 2000)
+        compare(App.recordCount(), before)
+        verify(o.drawer.opened, "取消确认不应关闭抽屉")
+        o.drawer.close()
+        tryVerify(function() { return !o.drawer.opened }, 2000)
+    }
+
+    function test_confirmDeleteDialogConfirmDeletes() {
+        const o = openConfirmDialog("确认删除公司")
+        compare(App.recordCount(), 1)
+        mouseClick(findChild(o.dlg, "confirmDeleteButton"))
+        tryVerify(function() { return !o.dlg.opened }, 2000)
+        tryVerify(function() { return !o.drawer.opened }, 2000)
+        compare(App.recordCount(), 0)
+    }
+
+    // ---- M8.1：添加对话框 Fusion 残留 header 移除 + 标题随缩放 ----
+    // 背景（探针实测，Qt 6.11/Fusion）：删除自定义 header 后 Fusion 模板默认 header 回归
+    //（visible=true、占 30px、#323232 内衬 radius2 盖住卡片顶角 → 上两角方；其标题
+    // fontPx=12 固定不随 zoom → 观感"标题不缩放"）。修复＝显式 header/footer null
+    //（同删除确认框）；自有标题 label 走 Theme.fontTitle，随 zoom 缩放。
+    function test_addDialogHeaderRemovedAndTitleScales() {
+        App.setUiZoom(1.0)
+        mouseClick(findChild(win, "addButton"))
+        const dlg = findChild(win, "addDialog")
+        tryVerify(function() { return dlg.opened }, 2000)
+        waitForRendering(win.contentItem)
+
+        verify(dlg.header === null, "对话框不应有 header（Fusion 默认：占30px、内衬盖顶角、标题不缩放）")
+        verify(dlg.footer === null, "对话框不应有 footer")
+
+        // 标题：无幽灵占位（紧贴 gapM 上边距）、字号绑 token 且随 zoom 缩放
+        const title = findChild(dlg, "addDialogTitle")
+        verify(title !== null)
+        const bg = dlg.background
+        compare(Math.round(title.mapToItem(bg, 0, 0).y), Theme.gapM)
+        tryVerify(function() { return title.font.pixelSize === 16 }) // 字面量锚（zoom 1.0 → fs(16)=16）
+
+        App.setUiZoom(1.2)
+        tryVerify(function() { return title.font.pixelSize === 19 }) // fs(16)@1.2
+        compare(title.font.pixelSize, Theme.fontTitle)
+
+        App.setUiZoom(1.0)
+        dlg.close()
+        tryVerify(function() { return !dlg.opened }, 2000)
+    }
+
+    // ---- M8.1：文本域盒高下限=wrapper 视口（备注区底边框不再被 clip 裁掉） ----
+    // 背景（像素实测，DPR 1.1+深色）：备注视口 56 < AppTextArea 背景下限 70 → 底边框落
+    // 在视口外被 FieldScroll 的 clip 裁掉（fill 硬切、无底线；滚动后表现为顶边被裁）。
+    function test_textAreaBottomEdgeWithinWrapper() {
+        App.setUiZoom(1.0)
+
+        // 1) 添加对话框（共用 RecordForm）：备注域底边在视口内
+        mouseClick(findChild(win, "addButton"))
+        const dlg = findChild(win, "addDialog")
+        tryVerify(function() { return dlg.opened }, 2000)
+        const dScroll = findChild(dlg, "addFormScroll")
+        const dNotes = findChild(dScroll, "notesArea")
+        verify(dNotes !== null)
+        const dWrap = dNotes.parent.parent // FieldScroll
+        verify(dNotes.y + dNotes.height <= dWrap.contentY + dWrap.height + 1,
+               "添加对话框备注域底边被裁（area=" + dNotes.y + "+" + dNotes.height
+               + " wrapper=" + dWrap.contentY + "+" + dWrap.height + "）")
+        dlg.close()
+        tryVerify(function() { return !dlg.opened }, 2000)
+        wait(250) // 对话框淡出动画收场，防其后行点击被遮罩消费
+
+        // 2) 详情抽屉：三域逐一断言
+        const id = App.addRecord({ "company": "边框锚公司", "position": "p", "status": "初筛" })
+        verify(id > 0)
+        const row = rowItem(id)
+        verify(row !== null)
+        mouseClick(row, Math.min(row.width / 2, win.width - 60), row.height / 2)
+        const drawer = findChild(win, "detailsDrawer")
+        const deadline = Date.now() + 2500
+        while (Date.now() < deadline && !drawer.opened)
+            wait(50)
+        verify(drawer.opened, "drawer 未打开")
+
+        const scroll = findChild(drawer, "drawerFormScroll")
+        const names = ["dutiesArea", "requirementsArea", "notesArea"]
+        for (let i = 0; i < names.length; ++i) {
+            const area = findChild(scroll, names[i])
+            verify(area !== null)
+            const wrapper = area.parent.parent // FieldScroll
+            verify(area.y + area.height <= wrapper.contentY + wrapper.height + 1,
+                   names[i] + " 底边被裁（area 底=" + (area.y + area.height)
+                   + " 视口底=" + (wrapper.contentY + wrapper.height) + "）")
+            verify(area.y >= wrapper.contentY - 1, names[i] + " 顶边被裁")
+        }
+
+        // 3) 内容增长仍能撑高并滚动（回归防误伤 M6.1 滚动语义）
+        const notes = findChild(scroll, "notesArea")
+        const notesScroll = notes.parent.parent
+        notes.text = "一行\n一行\n一行\n一行\n一行\n一行\n一行\n一行\n一行\n一行\n一行\n一行"
+        tryVerify(function() { return notesScroll.contentHeight > notesScroll.height + 1 })
+        notes.text = ""
+
+        drawer.close()
+        tryVerify(function() { return !drawer.opened }, 2000)
+    }
 }
