@@ -79,7 +79,9 @@ Drawer {
         palette.dark: Theme.dark ? "#20252F" : "#98A2B3"
         palette.shadow: Theme.dark ? "#0D1015" : "#D0D5DD"
 
-        ZoomWheelHandler { }
+        // M7：捕获层分区挂载（标题行/表单滚区/底栏各一个）——同一事件路径上有且只有
+        // 一个；根级挂会被表单滚区（ScrollView→Flickable）消费抢先，嵌套多层会双跳。
+        // 表单滚区内的捕获层见下方 formScroll（Flickable 自身）。
 
         RowLayout {
             Layout.fillWidth: true
@@ -97,19 +99,34 @@ Drawer {
                 icon.color: Theme.textPrimary
                 onClicked: drawer.close()
             }
+
+            ZoomWheelHandler { }
         }
 
-        // 表单+链接+时间线：滚动区（窗口小/缩放>100% 时内部滚动，底部操作行始终可见）
-        ScrollView {
+        // 表单+链接+时间线：滚动区（窗口小/缩放>100% 时内部滚动，底部操作行始终可见）。
+        // M7：ScrollView → 自管 Flickable——ScrollView 包装会无条件消费纵向滚轮，缩放捕获
+        // 层必须挂在滚动器自身才能先于消费拿到 Ctrl+滚轮（实测结论；同 ApplicationTable /
+        // M6.1 FieldScroll 模式）；非 Ctrl 事件原样放行，由 Flickable 照常滚动。
+        Flickable {
             id: formScroll
             objectName: "drawerFormScroll"
             Layout.fillWidth: true
             Layout.fillHeight: true
-            contentWidth: availableWidth
+            contentWidth: width
+            contentHeight: formColumn.implicitHeight
+            // 与旧 ScrollView 语义对齐：自然高度=内容高（不影响本处 fillHeight，
+            // 但保持隐式高度可读/可复用的一致性）
+            implicitHeight: contentHeight
+            flickableDirection: Flickable.VerticalFlick
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
             ScrollBar.vertical: AppScrollBar { policy: ScrollBar.AsNeeded }
 
+            ZoomWheelHandler { }
+
             ColumnLayout {
-                width: formScroll.availableWidth
+                id: formColumn
+                width: formScroll.width
                 spacing: Theme.gapM
 
                 // M6.2：表单与时间线之间的空白/标签点击 → 收回字段焦点
@@ -133,10 +150,12 @@ Drawer {
                         color: Theme.textSecondary
                     }
                     Label {
+                        objectName: "linkValueLabel"
                         Layout.fillWidth: true
                         text: form.linkText
                         elide: Text.ElideMiddle
                         color: Theme.linkColor
+                        font.pixelSize: Theme.fontBody // M7：补字号令牌（原为应用默认字体，不随 zoom）
                     }
                     AppButton {
                         objectName: "openLinkButton"
@@ -224,6 +243,8 @@ Drawer {
                     }
                 }
             }
+
+            ZoomWheelHandler { }
         }
     }
 
@@ -256,7 +277,9 @@ Drawer {
         }
 
         Label {
+            objectName: "confirmDeleteText"
             text: qsTr("确定删除「%1」？此操作不可撤销。").arg(form.companyText)
+            font.pixelSize: Theme.fontBody // M7：补字号令牌（原为应用默认字体，不随 zoom）
         }
 
         footer: DialogButtonBox {

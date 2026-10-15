@@ -9,6 +9,10 @@ import ApplyCompass
 T.ComboBox {
     id: control
 
+    // 字号令牌：显示文本（contentItem `font: control.font`）与占位联动；不设则回落应用
+    // 默认字体（固定像素，不随 zoom）——M7 修复。弹层 delegate 已走 Theme.fontBody。
+    font.pixelSize: Theme.fontBody
+
     implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset,
                             implicitContentWidth + leftPadding + rightPadding,
                             implicitIndicatorWidth + leftPadding + rightPadding)

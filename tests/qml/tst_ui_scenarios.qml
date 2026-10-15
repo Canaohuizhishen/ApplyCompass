@@ -487,7 +487,8 @@ TestCase {
                "min-z1.6：保存按钮应可见（y=" + pos.y + " root.h=" + drawer.contentItem.height + "）")
         const scroll = findChild(drawer, "drawerFormScroll")
         verify(scroll !== null)
-        tryVerify(function() { return scroll.contentItem.contentHeight > scroll.height + 1 })
+        // M7：formScroll 现为自管 Flickable 本体——直接读 contentHeight
+        tryVerify(function() { return scroll.contentHeight > scroll.height + 1 })
         drawer.close()
         tryVerify(function() { return !drawer.opened }, 2000)
         wait(250)
@@ -541,7 +542,8 @@ TestCase {
         // 表单滚动区应已生效（内容高于视口），且表单字段仍在
         const scroll = findChild(dlg, "addFormScroll")
         verify(scroll !== null)
-        tryVerify(function() { return scroll.contentItem.contentHeight > scroll.height + 1 })
+        // M7：addFormScroll 现为自管 Flickable 本体——直接读 contentHeight
+        tryVerify(function() { return scroll.contentHeight > scroll.height + 1 })
         const form = findChild(dlg, "addForm")
         verify(findChild(form, "companyField") !== null)
 
@@ -575,7 +577,8 @@ TestCase {
         const form = findChild(drawer, "detailForm")
         const duties = findChild(form, "dutiesArea")
         const dutiesScroll = duties.parent.parent // FieldScroll（自管 Flickable 包装）
-        const drawScroll = findChild(drawer, "drawerFormScroll").contentItem
+        // M7：drawerFormScroll 由 ScrollView 改自管 Flickable——定位器直达滚动器本体
+        const drawScroll = findChild(drawer, "drawerFormScroll")
 
         // 1) 未聚焦：域上滚 → 页面动、域不动
         drawScroll.contentY = 0
@@ -626,7 +629,7 @@ TestCase {
         wait(100)
         const dlgForm = findChild(dlg, "addForm")
         const dlgArea = findChild(dlgForm, "dutiesArea")
-        const dlgScroll = findChild(dlg, "addFormScroll").contentItem
+        const dlgScroll = findChild(dlg, "addFormScroll")
         mouseWheel(dlgArea, dlgArea.width / 2, Math.min(20, dlgArea.height / 2), 0, -120,
                    Qt.NoButton, Qt.NoModifier)
         wait(250)
@@ -661,7 +664,8 @@ TestCase {
         const form = findChild(drawer, "detailForm")
         const duties = findChild(form, "dutiesArea")
         const dutiesScroll = duties.parent.parent
-        const drawScroll = findChild(drawer, "drawerFormScroll").contentItem
+        // M7：drawerFormScroll 现为自管 Flickable——定位器直达滚动器本体
+        const drawScroll = findChild(drawer, "drawerFormScroll")
 
         // 1) 聚焦字段 → 域上滚 → 域动、页面不动（既有一致性）
         mouseClick(duties, duties.width / 2, 20)
@@ -773,6 +777,64 @@ TestCase {
         compare(Theme.rowHeight, Math.round(32 * 1.5))
 
         App.setUiZoom(1.0)
+    }
+
+    // ---- 缩放驱动输入控件字号（M7 锚定）----
+    // 背景：AppTextField/AppTextArea/AppComboBox 皮肤未设 font.pixelSize → 回落应用默认
+    // 字体（固定像素，不随 zoom）——用户实报"详情页那些文字都不缩放，依然保持最小字号"。
+    // 修复＝三控件根设 font.pixelSize: Theme.fontBody（模板自身即编辑器，font 直接驱动
+    // 渲染；占位/contentItem 经 control.font 联动）。本用例锚定令牌相等 + 渲染级放大。
+    function test_zoomScalesFormFonts() {
+        App.setUiZoom(1.0)
+        const id = App.addRecord({
+            "company": "字号缩甲", "position": "后端开发", "status": "Offer",
+            "applyDate": "2026-10-15", "salary": "25×16",
+            "link": "https://example.com/job/font",
+            "duties": "职责第一行",
+            "requirements": "要求第一行",
+            "notes": "备注第一行"
+        })
+        verify(id > 0)
+        const drawer = openDrawerFor(id)
+        const form = findChild(drawer, "detailForm")
+
+        const company = findChild(form, "companyField")
+        const duties = findChild(form, "dutiesArea")
+        const statusCombo = findChild(form, "statusCombo")
+        const linkValue = findChild(drawer, "linkValueLabel")
+        const saveButton = findChild(drawer, "saveButton")
+        verify(company !== null && duties !== null && statusCombo !== null)
+        verify(linkValue !== null && saveButton !== null)
+
+        // 100%：全部等于当前 body 字号令牌
+        compare(company.font.pixelSize, Theme.fontBody)
+        compare(duties.font.pixelSize, Theme.fontBody)
+        compare(statusCombo.font.pixelSize, Theme.fontBody)
+        compare(statusCombo.contentItem.font.pixelSize, Theme.fontBody)
+        compare(linkValue.font.pixelSize, Theme.fontBody)
+        compare(saveButton.font.pixelSize, Theme.fontBody)
+
+        // 渲染级锚定：固定文本的 contentWidth 直接反映实际渲染字号
+        //（防"属性变了但渲染没变"类回归）
+        company.text = "测试文本ABC测试"
+        const w100 = company.contentWidth
+        const baseBody = Theme.fontBody
+
+        App.setUiZoom(1.5)
+        tryVerify(function() { return Theme.fontBody > baseBody })
+        compare(company.font.pixelSize, Theme.fontBody)
+        compare(duties.font.pixelSize, Theme.fontBody)
+        compare(statusCombo.font.pixelSize, Theme.fontBody)
+        compare(linkValue.font.pixelSize, Theme.fontBody)
+        tryVerify(function() { return company.contentWidth > w100 })
+
+        // 主窗口搜索框（同一皮肤）
+        const search = findChild(win.contentItem, "searchField")
+        verify(search !== null)
+        compare(search.font.pixelSize, Theme.fontBody)
+
+        App.setUiZoom(1.0)
+        drawer.close()
     }
 
     // ---- 快捷键与选中行（§3.7） ----
@@ -990,5 +1052,90 @@ TestCase {
         compare(App.uiZoom, 1.2)
 
         App.setUiZoom(1.0)
+    }
+
+    // ---- M7 锚定：抽屉/对话框滚动表单区内的 Ctrl+滚轮缩放（捕获层挂滚动器自身）----
+    // 背景：ScrollView 包装无条件消费纵向滚轮，挂在其上层的 ZoomWheelHandler 拿不到事件
+    //（与 M6「仅列表边缘才缩放」同族）——用户鼠标停在表单上 Ctrl+滚轮只滚页面不缩放。
+    // 修复＝formScroll 改自管 Flickable + 捕获层挂滚动器自身（同 ApplicationTable 模式）；
+    // 抽屉/对话框改为分区挂载（标题行 / 表单滚区 / 底栏各一个）——同一事件路径上有且
+    // 只有一个（嵌套多层会双跳，实测）。已知边界：聚焦且可滚的文本域仍按 M6.1 语义把
+    // Ctrl+滚轮当域内滚动（域级不挂捕获层，否则与外层嵌套双跳）。
+    function test_zoomWheelInsideDrawerScrollRegion() {
+        // 小窗口（表单内容高于视口 → 页面确实可滚；“非 Ctrl 滚页面”断言才有意义）
+        win.width = 980
+        win.height = 560
+        App.setUiZoom(1.0)
+        wait(120)
+        const id = App.addRecord({
+            "company": "滚轮丙", "position": "p", "status": "Offer", "applyDate": "2026-10-15",
+            "duties": "职责1\n职责2\n职责3\n职责4\n职责5\n职责6\n职责7\n职责8\n职责9"
+        })
+        verify(id > 0)
+        const drawer = openDrawerFor(id)
+        const form = findChild(drawer, "detailForm")
+        const company = findChild(form, "companyField")
+        const duties = findChild(form, "dutiesArea")
+        const dutiesScroll = duties.parent.parent // FieldScroll（自管 Flickable）
+        const drawScroll = findChild(drawer, "drawerFormScroll") // M7：Flickable 本体
+
+        // 1) Ctrl+滚轮悬停单行输入框：单步缩放（不得双跳）、页面不滚
+        drawScroll.contentY = 0
+        wait(80)
+        mouseWheel(company, 50, 15, 0, 120, Qt.NoButton, Qt.ControlModifier)
+        tryCompare(App, "uiZoom", 1.1)
+        compare(drawScroll.contentY, 0)
+        // 注：不同修饰键的连续合成滚轮需留间隔——0ms 连发时 Qt 事件层会吞并紧
+        // 随其后的一条（QuickTest 合成队列特性；真机硬件流不存在 0ms 连发）
+        wait(120)
+
+        // 2) 同处非 Ctrl：不缩放、页面照常滚动（既有一致性）
+        mouseWheel(company, 50, 15, 0, -120, Qt.NoButton, Qt.NoModifier)
+        tryVerify(function() { return drawScroll.contentY > 1 }, 2000)
+        compare(App.uiZoom, 1.1)
+        compare(App.uiZoom, 1.1)
+
+        // 3) Ctrl+滚轮悬停未聚焦文本域：单步缩放、页面不滚（穿透语义不吞缩放）
+        drawScroll.contentY = 0
+        wait(80)
+        mouseWheel(duties, duties.width / 2, 20, 0, 120, Qt.NoButton, Qt.ControlModifier)
+        tryCompare(App, "uiZoom", 1.2)
+        compare(drawScroll.contentY, 0)
+
+        // 4) 聚焦且可滚文本域：M6.1 域内滚动语义优先（单捕获层约束下的已知边界——
+        //    Ctrl 修饰不改变：FieldScroll 按方向门控消费，域级不参与缩放）
+        mouseClick(duties, duties.width / 2, 20)
+        tryVerify(function() { return duties.activeFocus }, 1000)
+        dutiesScroll.contentY = 0
+        drawScroll.contentY = 0
+        wait(80)
+        mouseWheel(duties, duties.width / 2, 20, 0, -120, Qt.NoButton, Qt.ControlModifier)
+        wait(250)
+        verify(dutiesScroll.contentY > 1,
+               "聚焦域 Ctrl 滚轮应域内滚动（innerY=" + dutiesScroll.contentY + "）")
+        compare(App.uiZoom, 1.2) // 不缩放
+        compare(drawScroll.contentY, 0)
+
+        drawer.close()
+        tryVerify(function() { return !drawer.opened }, 2000)
+
+        // 5) 添加对话框表单区同样生效（同一修复形状）
+        App.setUiZoom(1.0)
+        const dlg = findChild(win.contentItem, "addDialog")
+        dlg.openForNew()
+        tryVerify(function() { return dlg.opened }, 2000)
+        waitForRendering(win.contentItem)
+        wait(100)
+        const dlgCompany = findChild(findChild(dlg, "addForm"), "companyField")
+        mouseWheel(dlgCompany, 50, 15, 0, 120, Qt.NoButton, Qt.ControlModifier)
+        tryCompare(App, "uiZoom", 1.1)
+        dlg.close()
+        tryVerify(function() { return !dlg.opened }, 2000)
+
+        // 还原（防污染后续用例）
+        App.setUiZoom(1.0)
+        win.width = 1320
+        win.height = 820
+        App.saveWindowState(-1, -1, 1320, 820, false)
     }
 }

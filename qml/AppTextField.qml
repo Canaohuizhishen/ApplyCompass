@@ -8,6 +8,11 @@ import ApplyCompass
 T.TextField {
     id: control
 
+    // 字号令牌：模板自身即文本编辑器（QQuickTextField : QQuickTextInput），font 为 override
+    // 属性直接驱动渲染；不设则回落应用默认字体（固定像素，不随 zoom）——曾致详情页输入
+    // 文本不缩放（M7 修复）。占位文本经 `font: control.font` 绑定自动联动。
+    font.pixelSize: Theme.fontBody
+
     implicitWidth: implicitBackgroundWidth + leftInset + rightInset
     implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset,
                              contentHeight + topPadding + bottomPadding,

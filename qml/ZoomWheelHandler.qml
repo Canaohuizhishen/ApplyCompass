@@ -15,6 +15,11 @@ import ApplyCompass
 //     直接拒绝。→ 显式含 TouchPad。
 //  3) blocking 默认 true（Qt 6.3+）：会在 onWheel 触发之前无条件 setAccepted，
 //     非 Ctrl 的滚轮将无法回退给列表滚动。→ 置 false，只在本处显式接受。
+//
+// 约束（M7 再确认）：本 handler 必须保证「同一事件路径上有且只有一个」——
+// 嵌套多层时每个都会收到 onWheel 并各自缩放（实测双跳 +0.2/格，accept 标记
+// 无法区分先后：进入 onWheel 时 accepted 恒为 true）。抽屉/对话框因此改为
+// 分区挂载（标题行 / 表单滚区 / 底栏各一个），不设根级捕获层。
 WheelHandler {
     acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
     blocking: false

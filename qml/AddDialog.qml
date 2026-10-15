@@ -43,8 +43,6 @@ Dialog {
         open()
     }
 
-    ZoomWheelHandler { }
-
     ColumnLayout {
         id: contentRoot
         anchors.fill: parent
@@ -63,22 +61,37 @@ Dialog {
             font.pixelSize: Theme.fontTitle
             font.bold: true
             color: Theme.textPrimary
+
+            // M7：捕获层分区挂载（标题/表单滚区/按钮行各一个）——同一事件路径上有且
+            // 只有一个；根级挂会被表单滚区消费抢先，嵌套多层会双跳（实测）
+            ZoomWheelHandler { }
         }
 
-        ScrollView {
+        // M7：同抽屉——ScrollView → 自管 Flickable + 缩放捕获层挂在滚动器自身
+        //（表单区内 Ctrl+滚轮缩放；非 Ctrl 照常滚动对话框表单）。
+        Flickable {
             id: formScroll
             objectName: "addFormScroll"
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.leftMargin: Theme.gapL
             Layout.rightMargin: Theme.gapL
-            contentWidth: availableWidth
+            contentWidth: width
+            contentHeight: form.implicitHeight
+            // 关键：旧 ScrollView 的 implicitHeight=内容隐式高度，对话框整体高度
+            // `min(implicitHeight, 父高−48)` 依赖它；不设则对话框塌成按钮行高度（实测）
+            implicitHeight: contentHeight
+            flickableDirection: Flickable.VerticalFlick
+            boundsBehavior: Flickable.StopAtBounds
+            clip: true
             ScrollBar.vertical: AppScrollBar { policy: ScrollBar.AsNeeded }
+
+            ZoomWheelHandler { }
 
             RecordForm {
                 id: form
                 objectName: "addForm"
-                width: formScroll.availableWidth
+                width: formScroll.width
             }
         }
 
@@ -106,6 +119,8 @@ Dialog {
                 text: qsTr("取消")
                 onClicked: dialog.close()
             }
+
+            ZoomWheelHandler { }
         }
     }
 }

@@ -40,6 +40,11 @@ ColumnLayout {
                             && contentHeight > height + 1
                             ? Flickable.VerticalFlick : Flickable.HorizontalFlick
         ScrollBar.vertical: AppScrollBar { policy: ScrollBar.AsNeeded }
+
+        // 注意（M7）：本层不挂 ZoomWheelHandler——它与外层 formScroll 的捕获层会构成
+        // 同一事件路径上的嵌套，实测双跳（每个 handler 都会收到并各自缩放）。单捕获层
+        // 约束下：未聚焦穿透到 formScroll 层缩放；聚焦且可滚时本 Flickable 按 M6.1
+        // 语义消费 Ctrl+滚轮为域内滚动（已知边界，见设计文档 §16）。
     }
 
     readonly property string companyText: companyField.text

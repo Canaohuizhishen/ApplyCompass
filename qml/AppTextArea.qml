@@ -7,6 +7,10 @@ import ApplyCompass
 T.TextArea {
     id: control
 
+    // 字号令牌：模板自身即文本编辑器（QQuickTextArea : QQuickTextEdit），不设则回落
+    // 应用默认字体（固定像素，不随 zoom）——M7 修复。占位文本经 control.font 联动。
+    font.pixelSize: Theme.fontBody
+
     implicitWidth: implicitBackgroundWidth + leftInset + rightInset
     implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset,
                              contentHeight + topPadding + bottomPadding)

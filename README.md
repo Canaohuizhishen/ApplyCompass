@@ -73,8 +73,13 @@ ctest --test-dir build --output-on-failure   # 串行跑；7 个目标
   - **主题偏好“重启失效”根因**：`initialize()` 里 `initDarkMode()`（含首次重算）跑在偏好读库之前，读入后未再重算 → 启动被系统色覆盖。修复=读入后补一次 `recomputeDarkMode()`；`tst_controller` 锚定（含跨重启往返，修复前必挂）。
   - **点外部关闭用 QQC2 原生 `Popup.CloseOnPressOutside`**：抽屉与设置面板通用；**自加 MouseArea 捕获层会被 modal 遮罩（Overlay dim）吃掉点击收不到事件——已实测排除，勿回退**。
   - 设置页：分段控件（连体三段，激活段主色实底）+ 标签列对齐 + 发丝分隔 + 「完成」主按钮；objectName 全保留。
-- **M6.1 补记（滚轮委派）**：多行文本域与时间线在"未聚焦或内容装得下"时，纵向滚轮穿透给页面（`Flickable.flickableDirection` 方向门控——Qt 不消费与方向不符的滚轮；不可滚列表用 `enabled` 门控）；聚焦且可滚才域内滚动。未聚焦域上 Ctrl+滚轮现在可达缩放链（原先失灵）。
+- **M6.1 补记（滚轮委派）**：多行文本域与时间线在"未聚焦或内容装得下"时，纵向滚轮穿透给页面（`Flickable.flickableDirection` 方向门控——Qt 不消费与方向不符的滚轮；不可滚列表用 `enabled` 门控）；聚焦且可滚才域内滚动。未聚焦域上 Ctrl+滚轮已不再被域内吞并——但彼时仍被外层 `ScrollView` 消费（只滚不缩；"可达缩放链"表述不准，M7 捕获层重构后方成立）。
 - **M6.2 补记（点空白失焦）**：详情抽屉/添加对话框内点击标签、标题、空白等非交互区域 → 字段失焦（`TapHandler` 兜底：被控件消费的点击不会冒泡到它，控件零误伤）；聚焦字段后想恢复页面滚动，点一下空白即可。已知例外：时间线区域与窗边边距带不触发。
+- **M7 补记（缩放闭环：输入控件字号 + 捕获层）**：
+  - **自绘输入控件的字号必须挂令牌**：QtQuick.Templates 的 TextField/TextArea **模板自身即编辑器**（`QQuickTextField:QQuickTextInput`/`QQuickTextArea:QQuickTextEdit`，`contentItem` 读回 null），`font` 为 override 属性直接驱动渲染；不设 `font.pixelSize` 即回落固定像素的应用默认字体、与 zoom 脱钩（曾致"详情页文字不缩放"）。
+  - **滚轮捕获层同一事件路径上有且只有一个**：嵌套多层时每层都收到并各自缩放（实测双跳 +0.2/格）；`wheel.accepted` 进 onWheel 时恒为 true，无法做"已被内层消费"判别（勿加该守卫）→ 抽屉/对话框按分区挂载：标题行 / 表单滚区（挂 Flickable 自身）/ 底栏各一个。
+  - **`ScrollView → 自管 Flickable` 时 `implicitHeight: contentHeight` 必补**：依赖 implicitHeight 定高的对话框（`min(implicitHeight, 父高−48)`）不补会塌成按钮行高度（AddDialog 实测）。
+  - **测试 pacing**：不同修饰键的连续**合成**滚轮之间必须留 `wait()`——0ms 连发会被 Qt 事件层吞并第二条（QuickTest 队列特性；真机硬件流不存在 0ms 连发）。
 - **M6 补记**：
   - **合成点击的“行几何中心”陷阱（测试侧）**：缩放 >100% 时表格内容宽于窗口，`mouseClick(row)` 按几何中心合成点击会落在窗口可视区之外 → 无命中（rowClicked 信号不发出、childAt 为 null）。测试须改点行内窗口必然可见的左侧点；曾因此把既有行为误诊为抽屉竞态。
   - **QQuickPopup 退场期间 `visible` 仍为 true**（`opened` 已 false）：判断“是否关闭”别只看 `opened`；Qt 对退场中重开有专门处理（`setVisible` 守卫注释），无需自加 workaround——曾据此误加守卫后回滚。
