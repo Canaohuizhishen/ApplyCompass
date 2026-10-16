@@ -59,7 +59,7 @@ ColumnLayout {
         return value === "" || value === undefined ? 0 : App.statusOptions.indexOf(value) + 1
     }
 
-    // 旧数据可能有组合值（如 "C++系统开发 / C++服务端开发"）不在列表 → 追加显示避免丢失
+    // 旧数据可能有组合值（如 "C++Qt客户端开发 / C++服务端开发"）不在列表 → 追加显示避免丢失
     property string extraChannel: ""
     property string extraResume: ""
     readonly property var channelModel: extraChannel !== ""

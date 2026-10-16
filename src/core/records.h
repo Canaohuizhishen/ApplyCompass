@@ -7,7 +7,8 @@
 namespace applycompass {
 
 // ---- 枚举取值 ----
-// 与旧表实测下拉完全一致（openpyxl 取数据验证）：状态 9 项、渠道 9 项、简历版本 3 项。
+// 状态/渠道与旧表实测下拉一致（openpyxl 取数据验证）：状态 9 项、渠道 9 项；
+// 简历版本随现行 PDF 演进为 4 项（客户端 / 服务端 / 全栈 / 通用版）。
 // 状态顺序即设计文档 §3.7 数字键 1–9 的下拉序。
 namespace enums {
 
@@ -25,7 +26,8 @@ inline const QStringList Channels = {
 inline const QStringList ResumeVersions = {
     QStringLiteral("C++Qt客户端开发"),
     QStringLiteral("C++服务端开发"),
-    QStringLiteral("C++系统开发"),
+    QStringLiteral("C++全栈开发"),
+    QStringLiteral("通用版"),
 };
 inline const QStringList Kinds = {QStringLiteral("实习"), QStringLiteral("正式")};
 
